@@ -65,7 +65,7 @@ export function Navbar() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
             <img src="/logo.png" alt="Ceylon Work Force Logo" className="h-8 w-8" />
-            <span className="font-bold text-xl text-primaryDark">Ceylon Work Force</span>
+            <span className="font-bold text-xl text-primaryDark">Ceylon Work Forge</span>
           </Link>
 
           <NavigationMenu className="hidden md:flex">

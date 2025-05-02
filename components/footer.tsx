@@ -9,7 +9,7 @@ export function Footer() {
           <div className="space-y-4">
             <Link href="/" className="flex items-center">
               <Image src="/logo.png" alt="Ceylon Workforce" width={40} height={40} className="mr-2" />
-              <span className="text-xl font-bold">Ceylon Workforce</span>
+              <span className="text-xl font-bold">Ceylon Workforge</span>
             </Link>
             <p className="text-gray-600">Connecting Sri Lankan talent with global opportunities.</p>
           </div>
@@ -100,7 +100,7 @@ export function Footer() {
 
         <div className="border-t mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-600 text-sm">
-            &copy; {new Date().getFullYear()} Ceylon Workforce. All rights reserved.
+            &copy; {new Date().getFullYear()} Ceylon Workfoge. All rights reserved.
           </p>
           <div className="flex space-x-4 mt-4 md:mt-0">
             <a href="#" className="text-gray-600 hover:text-primary">
