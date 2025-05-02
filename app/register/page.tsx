@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -75,46 +77,44 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!validateForm()) {
-      return
-    }
-
+    if (!validateForm()) return
     setIsLoading(true)
-
+  
     try {
-      // Create a new user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      )
+  
+      await updateProfile(userCredential.user, { displayName: formData.name })
+  
       const newUser = {
-        id: `user-${Date.now()}`,
+        id: userCredential.user.uid,
         name: formData.name,
         email: formData.email,
-        role: "user" as const,
-        userType: "seeker" as const, // Default to seeker
+        role: "user",
+        userType: "seeker",
         isPaid: false,
         avatarUrl: null,
       }
-
-      // Store the user in localStorage via context
+  
       setUser(newUser)
-
-      // Set a flag in sessionStorage to indicate this is a new registration
       sessionStorage.setItem("justRegistered", "true")
-
+  
       toast({
         title: "Registration successful",
         description: "Your account has been created. Please complete the payment process.",
       })
-
-      // After registration, redirect to payment page
+  
       router.push("/payment")
     } catch (error: any) {
-      console.error("Registration error:", error)
-      setErrors({ form: error.message || "Registration failed. Please try again." })
+      console.error("Firebase registration error:", error)
+      setErrors({ form: error.message || "Registration failed" })
     } finally {
       setIsLoading(false)
     }
   }
-
   // For demo purposes, create a demo user without actual registration
   const handleDemoRegistration = () => {
     setIsLoading(true)
