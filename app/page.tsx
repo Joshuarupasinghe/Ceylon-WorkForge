@@ -6,10 +6,18 @@ import { ArrowRight, Briefcase, Search, Users } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="flex flex-col gap-12 pb-12">
+    <div className="flex flex-col gap-12 pb-32">
       {/* Hero Section */}
-      <section className="bg-primaryDark text-white py-16">
-        <div className="container mx-auto px-4">
+      <section className="relative bg-primaryDark text-white py-36 overflow-hidden">
+        {/* Background Images */}
+        <div className="absolute inset-0 z-0 flex flex-wrap justify-center items-center gap-8 opacity-30  ">
+          <img src="/hero 1.png" className="rounded-2xl w-60 h-auto" alt="Hero 1" />
+          <img src="/hero2.png" className="rounded-2xl w-60 h-auto" alt="Hero 2" />
+          <img src="/hero3.png" className="rounded-2xl w-60 h-auto" alt="Hero 3" />
+        </div>
+
+        {/* Hero Content */}
+        <div className="relative z-10 container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">Connect with Sri Lanka's Top Talent</h1>
             <p className="text-lg md:text-xl mb-8 text-subtle">
