@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/context/user-context"
@@ -12,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+
+import { auth, db } from "@/lib/firebase"
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { doc, setDoc } from "firebase/firestore"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -27,7 +27,6 @@ export default function RegisterPage() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       if (user.isPaid) {
@@ -65,7 +64,6 @@ export default function RegisterPage() {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
 
-    // Clear error when user types
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -77,77 +75,46 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!validateForm()) return
     setIsLoading(true)
-  
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      )
-  
-      await updateProfile(userCredential.user, { displayName: formData.name })
-  
-      const newUser = {
-        id: userCredential.user.uid,
+      // Create user with Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      const firebaseUser = userCredential.user
+
+      // User data to store in Firestore
+      const userData = {
+        id: firebaseUser.uid,
         name: formData.name,
-        email: formData.email,
+        email: firebaseUser.email,
         role: "user",
         userType: "seeker",
         isPaid: false,
         avatarUrl: null,
       }
-  
-      setUser(newUser)
-      sessionStorage.setItem("justRegistered", "true")
-  
-      toast({
-        title: "Registration successful",
-        description: "Your account has been created. Please complete the payment process.",
-      })
-  
-      router.push("/payment")
+
+      // Save user data in Firestore
+      await setDoc(doc(db, "users", firebaseUser.uid), userData)
+
+      // Store user in context
+      setUser(userData)
+sessionStorage.setItem("justRegistered", "true")
+toast({
+  title: "Registration successful",
+  description: "Your account has been created. Please complete the payment process.",
+})
+
+// ⏱ Ensure user context updates before navigation
+setTimeout(() => {
+  router.push("/payment")
+}, 200)
+
+
     } catch (error: any) {
-      console.error("Firebase registration error:", error)
-      setErrors({ form: error.message || "Registration failed" })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-  // For demo purposes, create a demo user without actual registration
-  const handleDemoRegistration = () => {
-    setIsLoading(true)
-
-    try {
-      // Create a mock user
-      const mockUser = {
-        id: `demo-${Date.now()}`,
-        name: formData.name || "Demo User",
-        email: formData.email || "demo@example.com",
-        role: "user" as const,
-        userType: "seeker" as const,
-        isPaid: false,
-      }
-
-      // Store the mock user via context
-      setUser(mockUser)
-
-      // Set a flag in sessionStorage to indicate this is a new registration
-      sessionStorage.setItem("justRegistered", "true")
-
-      toast({
-        title: "Demo Registration successful",
-        description: "Your demo account has been created. Please complete the payment process.",
-      })
-
-      // After registration, redirect to payment page
-      setTimeout(() => {
-        router.push("/payment")
-      }, 100)
-    } catch (error: any) {
-      console.error("Demo registration error:", error)
-      setErrors({ form: error.message || "Demo registration failed. Please try again." })
+      console.error("Registration error:", error)
+      setErrors({ form: error.message || "Registration failed. Please try again." })
     } finally {
       setIsLoading(false)
     }
@@ -216,16 +183,6 @@ export default function RegisterPage() {
               ) : (
                 "Create account"
               )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleDemoRegistration}
-              disabled={isLoading}
-            >
-              Use Demo Mode
             </Button>
 
             <div className="text-center text-sm">

@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/context/user-context"
@@ -13,24 +11,23 @@ import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
+import { auth, db } from "@/lib/firebase"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { doc, getDoc } from "firebase/firestore"
+
 export default function LoginPage() {
   const router = useRouter()
-  const { user, login, setUser } = useUser()
+  const { user, setUser } = useUser()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  })
+  const [formData, setFormData] = useState({ email: "", password: "" })
   const [error, setError] = useState("")
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       if (user.role === "admin") {
         router.push("/admin")
       } else {
-        // Always redirect to role selection after login
         router.push("/role-selection")
       }
     }
@@ -53,57 +50,35 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Try to login with provided credentials
-      await login(formData.email, formData.password)
+      const userCred = await signInWithEmailAndPassword(auth, formData.email, formData.password)
+      const uid = userCred.user.uid
 
-      toast({
-        title: "Login successful",
-        description: "Welcome back to Ceylon Work Force!",
-      })
+      // Fetch user data from Firestore
+      const userDoc = await getDoc(doc(db, "users", uid))
 
-      // Explicitly redirect to role selection
-      router.push("/role-selection")
+      if (!userDoc.exists()) {
+        throw new Error("User profile not found in Firestore.")
+      }
+
+      const userData = userDoc.data()
+      setUser(userData)
+toast({
+  title: "Login successful",
+  description: `Welcome back, ${userData.name || "User"}!`,
+})
+
+// ⏱ Allow context to propagate before redirect
+setTimeout(() => {
+  if (userData.role === "admin") {
+    router.push("/admin")
+  } else {
+    router.push("/role-selection")
+  }
+}, 200)
+
     } catch (error: any) {
       console.error("Login error:", error)
       setError(error.message || "Invalid email or password")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // For demo purposes only - this creates a demo user
-  const handleDemoLogin = async () => {
-    if (!formData.email) {
-      setError("Please enter your email address")
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      // For demo purposes, we'll create a mock user
-      const mockUser = {
-        id: `demo-${Date.now()}`,
-        name: formData.email.split("@")[0],
-        email: formData.email,
-        role: "user" as const,
-        userType: "seeker" as const,
-        isPaid: false,
-      }
-
-      // Store the demo user via the context
-      setUser(mockUser)
-
-      toast({
-        title: "Demo login successful",
-        description: "Welcome to Ceylon Work Force! (Demo Mode)",
-      })
-
-      // Explicitly redirect to role selection
-      router.push("/role-selection")
-    } catch (error: any) {
-      console.error("Demo login error:", error)
-      setError(error.message || "Failed to log in with demo mode")
     } finally {
       setIsLoading(false)
     }
@@ -132,9 +107,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 name="password"
@@ -146,29 +119,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && (
-              <div className="text-sm text-destructive text-center">
-                <p>{error}</p>
-                <div className="mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={handleDemoLogin}
-                    disabled={isLoading}
-                  >
-                    Continue in demo mode
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="text-xs text-muted-foreground">
-              <p>For demo purposes:</p>
-              <p>Email: john@example.com</p>
-              <p>Password: password123</p>
-            </div>
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
