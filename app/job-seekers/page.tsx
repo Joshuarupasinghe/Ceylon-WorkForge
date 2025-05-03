@@ -14,104 +14,44 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
-// Mock job data
-const MOCK_JOBS = [
-  {
-    id: "1",
-    title: "Senior Software Engineer",
-    company: "TechCorp Lanka",
-    location: "Colombo",
-    type: "Full-time",
-    salary: "$3,000 - $4,500",
-    description:
-      "We are looking for an experienced software engineer to join our growing team. You will be responsible for developing and maintaining web applications using modern technologies.",
-    requirements:
-      "5+ years of experience with React, Node.js, and TypeScript. Experience with cloud platforms like AWS or Azure.",
-    skills: ["React", "Node.js", "TypeScript", "AWS", "MongoDB"],
-    postedAt: "2 days ago",
-    applied: false,
-  },
-  {
-    id: "2",
-    title: "UX/UI Designer",
-    company: "Creative Solutions",
-    location: "Colombo",
-    type: "Full-time",
-    salary: "$2,500 - $3,500",
-    description:
-      "Join our creative team to design beautiful and intuitive user interfaces for web and mobile applications. You will work closely with product managers and developers.",
-    requirements: "3+ years of experience in UX/UI design. Proficiency in Figma, Adobe XD, or Sketch.",
-    skills: ["Figma", "UI Design", "UX Research", "Prototyping", "Adobe Creative Suite"],
-    postedAt: "1 week ago",
-    applied: false,
-  },
-  {
-    id: "3",
-    title: "Marketing Manager",
-    company: "Global Brands Lanka",
-    location: "Kandy",
-    type: "Full-time",
-    salary: "$2,800 - $3,800",
-    description:
-      "Lead our marketing efforts to increase brand awareness and drive customer acquisition. You will develop and implement marketing strategies across various channels.",
-    requirements:
-      "5+ years of experience in marketing. Experience with digital marketing, social media, and analytics tools.",
-    skills: ["Digital Marketing", "Social Media", "Content Strategy", "Analytics", "Campaign Management"],
-    postedAt: "3 days ago",
-    applied: false,
-  },
-  {
-    id: "4",
-    title: "Data Analyst",
-    company: "DataTech Solutions",
-    location: "Colombo",
-    type: "Full-time",
-    salary: "$2,200 - $3,200",
-    description:
-      "Analyze large datasets to extract insights and support business decisions. You will create reports, dashboards, and visualizations to communicate findings.",
-    requirements: "3+ years of experience in data analysis. Proficiency in SQL, Python, and data visualization tools.",
-    skills: ["SQL", "Python", "Data Visualization", "Statistics", "Excel"],
-    postedAt: "1 day ago",
-    applied: false,
-  },
-  {
-    id: "5",
-    title: "Frontend Developer",
-    company: "WebSolutions Lanka",
-    location: "Galle",
-    type: "Remote",
-    salary: "$2,000 - $3,000",
-    description:
-      "Develop responsive and interactive user interfaces for web applications. You will work with designers and backend developers to implement features.",
-    requirements: "2+ years of experience in frontend development. Proficiency in HTML, CSS, JavaScript, and React.",
-    skills: ["React", "JavaScript", "HTML", "CSS", "Responsive Design"],
-    postedAt: "5 days ago",
-    applied: false,
-  },
-  {
-    id: "6",
-    title: "Project Manager",
-    company: "BuildTech Lanka",
-    location: "Colombo",
-    type: "Full-time",
-    salary: "$3,500 - $4,500",
-    description:
-      "Lead and manage construction projects from inception to completion. You will coordinate with clients, architects, and contractors to ensure projects are delivered on time and within budget.",
-    requirements:
-      "5+ years of experience in project management. PMP certification preferred. Experience in construction industry.",
-    skills: ["Project Planning", "Budgeting", "Team Leadership", "Risk Management", "Stakeholder Communication"],
-    postedAt: "1 week ago",
-    applied: false,
-  },
-]
+function timeAgo(date: Date): string {
+  const now = new Date()
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  const intervals: [number, string][] = [
+    [60, "second"],
+    [60, "minute"],
+    [24, "hour"],
+    [7, "day"],
+    [4.34524, "week"],
+    [12, "month"],
+    [Number.POSITIVE_INFINITY, "year"],
+  ]
+
+  let duration = seconds
+  let i = 0
+
+  while (duration >= intervals[i][0] && i < intervals.length - 1) {
+    duration /= intervals[i][0]
+    i++
+  }
+
+  const rounded = Math.floor(duration)
+  const unit = intervals[i][1]
+
+  return `${rounded} ${unit}${rounded !== 1 ? "s" : ""} ago`
+}
 
 export default function JobSeekersPage() {
   const router = useRouter()
   const { user, isLoading: userLoading } = useUser()
   const [isLoading, setIsLoading] = useState(true)
-  const [jobs, setJobs] = useState(MOCK_JOBS)
-  const [selectedJob, setSelectedJob] = useState<(typeof MOCK_JOBS)[0] | null>(null)
+  const [jobs, setJobs] = useState<any[]>([])
+  const [filteredJobs, setFilteredJobs] = useState<any[]>([])
+  const [selectedJob, setSelectedJob] = useState<any | null>(null)
   const [filters, setFilters] = useState({
     search: "",
     location: "",
@@ -120,16 +60,38 @@ export default function JobSeekersPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
+    const fetchJobs = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "jobs"))
+        const jobList = snapshot.docs.map((doc) => {
+          const data = doc.data()
+          const createdAt = data.createdAt?.toDate?.() ?? new Date()
 
-    return () => clearTimeout(timer)
+          return {
+            id: doc.id,
+            ...data,
+            createdAt,
+            postedAt: timeAgo(createdAt),
+            applied: false,
+          }
+        })
+        setJobs(jobList)
+        setFilteredJobs(jobList)
+      } catch (error) {
+        toast({
+          title: "Error fetching jobs",
+          description: "Check your Firebase connection or data structure.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchJobs()
   }, [])
 
   useEffect(() => {
-    // Redirect if not logged in
     if (!userLoading && !user) {
       router.push("/login")
     }
@@ -140,51 +102,46 @@ export default function JobSeekersPage() {
   }
 
   const applyFilters = () => {
-    let filteredJobs = [...MOCK_JOBS]
+    let filtered = [...jobs]
 
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase()
-      filteredJobs = filteredJobs.filter(
-        (job) =>
-          job.title.toLowerCase().includes(searchTerm) ||
-          job.company.toLowerCase().includes(searchTerm) ||
-          job.description.toLowerCase().includes(searchTerm) ||
-          job.skills.some((skill) => skill.toLowerCase().includes(searchTerm)),
+    const searchTerm = filters.search.toLowerCase()
+
+    if (searchTerm) {
+      filtered = filtered.filter((job) =>
+        job.title.toLowerCase().includes(searchTerm) ||
+        job.company.toLowerCase().includes(searchTerm) ||
+        job.description.toLowerCase().includes(searchTerm) ||
+        (Array.isArray(job.skills) && job.skills.some((skill: string) => skill.toLowerCase().includes(searchTerm)))
       )
     }
 
-    if (filters.location) {
-      filteredJobs = filteredJobs.filter((job) => job.location.toLowerCase().includes(filters.location.toLowerCase()))
+    if (filters.location && filters.location !== "all") {
+      filtered = filtered.filter((job) =>
+        job.location.toLowerCase().includes(filters.location.toLowerCase())
+      )
     }
 
-    if (filters.jobType) {
-      filteredJobs = filteredJobs.filter((job) => job.type.toLowerCase() === filters.jobType.toLowerCase())
+    if (filters.jobType && filters.jobType !== "all") {
+      filtered = filtered.filter((job) =>
+        job.type.toLowerCase() === filters.jobType.toLowerCase()
+      )
     }
 
-    setJobs(filteredJobs)
+    setFilteredJobs(filtered)
     setShowFilters(false)
   }
 
   const resetFilters = () => {
-    setFilters({
-      search: "",
-      location: "",
-      jobType: "",
-    })
-    setJobs(MOCK_JOBS)
+    setFilters({ search: "", location: "", jobType: "" })
+    setFilteredJobs(jobs)
     setShowFilters(false)
   }
 
   const handleApplyJob = (jobId: string) => {
-    // Update the job's applied status
     setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? { ...job, applied: true } : job)))
-
-    // Update the selected job if it's the one being applied to
     if (selectedJob && selectedJob.id === jobId) {
       setSelectedJob({ ...selectedJob, applied: true })
     }
-
-    // Show success toast
     toast({
       title: "Application Submitted!",
       description: "Your job application has been successfully submitted.",
@@ -309,9 +266,8 @@ export default function JobSeekersPage() {
                 jobs.map((job) => (
                   <Card
                     key={job.id}
-                    className={`hover:shadow-md transition-shadow cursor-pointer ${
-                      selectedJob?.id === job.id ? "border-accent" : ""
-                    }`}
+                    className={`hover:shadow-md transition-shadow cursor-pointer ${selectedJob?.id === job.id ? "border-accent" : ""
+                      }`}
                     onClick={() => setSelectedJob(job)}
                   >
                     <CardContent className="p-6">
