@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Drawer,
   DrawerClose,
@@ -17,16 +23,17 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 
+import { db } from "@/lib/firebase" // adjust path if needed
+import { collection, addDoc, Timestamp } from "firebase/firestore"
+
 interface CreateFeaturedListingDrawerProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  onCreateFeatured: (jobDetails: any, duration: number) => void
 }
 
 export function CreateFeaturedListingDrawer({
   isOpen,
   onOpenChange,
-  onCreateFeatured,
 }: CreateFeaturedListingDrawerProps) {
   const [jobTitle, setJobTitle] = useState("")
   const [company, setCompany] = useState("")
@@ -37,14 +44,15 @@ export function CreateFeaturedListingDrawer({
   const [selectedDuration, setSelectedDuration] = useState("7")
   const [hasEdits, setHasEdits] = useState(false)
 
-  const handleCreateFeatured = () => {
-    // Parse skills from comma-separated string to array
+  const handleCreateFeatured = async () => {
     const skills = skillsInput
       .split(",")
       .map((skill) => skill.trim())
       .filter((skill) => skill !== "")
 
-    // Create job details object
+    const now = Timestamp.now()
+    const expires = Timestamp.fromDate(new Date(now.toDate().getTime() + Number(selectedDuration) * 86400000))
+
     const jobDetails = {
       title: jobTitle,
       company,
@@ -52,12 +60,21 @@ export function CreateFeaturedListingDrawer({
       jobType,
       description,
       skills,
+      featured: true,
+      createdAt: now,
+      expiresAt: expires,
     }
 
-    onCreateFeatured(jobDetails, Number.parseInt(selectedDuration))
-    onOpenChange(false)
+    try {
+      await addDoc(collection(db, "featuredListings"), jobDetails)
+      onOpenChange(false)
+      resetForm()
+    } catch (error) {
+      console.error("Error adding featured listing:", error)
+    }
+  }
 
-    // Reset form
+  const resetForm = () => {
     setJobTitle("")
     setCompany("")
     setLocation("")
