@@ -5,15 +5,15 @@ import Link from "next/link"
 
 export default function AboutPage() {
   return (
-    <div className="container py-12">
+    <div className="container py-12 w-full">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-primaryDark mb-4">About Ceylon Work Force</h1>
           <p className="text-xl text-muted-foreground">Connecting talent with opportunity in Ceylon</p>
         </div>
 
-        <Tabs defaultValue="mission" className="w-full mb-12">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="mission" className="w-auto mb-16">
+          <TabsList className="grid w-max grid-cols-3 bg-white  hover:bg-accent/90">
             <TabsTrigger value="mission">Our Mission</TabsTrigger>
             <TabsTrigger value="team">Our Team</TabsTrigger>
             <TabsTrigger value="story">Our Story</TabsTrigger>
