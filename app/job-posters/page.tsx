@@ -83,6 +83,9 @@ export default function JobPostersPage() {
           const id = docSnap.id
 
           let userInfo = {}
+          let profileData = {}
+
+          // Get user basic info from users collection
           try {
             const userRef = doc(db, "users", id)
             const userSnap = await getDoc(userRef)
@@ -93,9 +96,22 @@ export default function JobPostersPage() {
             console.warn("Error loading user info:", err)
           }
 
+          // Get profile data (bio and location)
+          try {
+            const profileRef = doc(db, "profiles", id)
+            const profileSnap = await getDoc(profileRef)
+            if (profileSnap.exists()) {
+              profileData = profileSnap.data()
+            }
+          } catch (err) {
+            console.warn("Error loading profile data:", err)
+          }
+
           data.push({
             ...seeker,
             id,
+            bio: (profileData as any)?.bio || seeker.bio,
+            location: (profileData as any)?.location || seeker.location,
             rating: Math.random() * 2 + 3, // Simulated rating
             userInfo,
           })
@@ -116,6 +132,7 @@ export default function JobPostersPage() {
 
     fetchSeekers()
   }, [toast])
+
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
@@ -208,88 +225,150 @@ export default function JobPostersPage() {
               <Card
                 key={seeker.id}
                 onClick={() => setSelectedSeeker(seeker)}
-                className={`cursor-pointer hover:shadow-md ${
-                  selectedSeeker?.id === seeker.id ? "border-accent" : ""
-                }`}
+                className={`cursor-pointer hover:shadow-md border border-muted rounded-xl transition-shadow relative ${selectedSeeker?.id === seeker.id ? "border-accent" : ""
+                  }`}
               >
-                <CardContent className="p-6 flex gap-4">
-                  <Avatar>
-                    <AvatarFallback>
-                      {(seeker.userInfo?.name ?? seeker.id).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="text-xl font-bold">{seeker.userInfo?.name ?? seeker.id}</h3>
-                    <p className="text-muted-foreground">{seeker.title}</p>
-                    <p className="text-muted-foreground">{seeker.experience}</p>
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {seeker.skills.slice(0, 3).map((skill) => (
-                        <Badge key={skill} variant="secondary">{skill}</Badge>
-                      ))}
+                <CardContent className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="flex gap-4">
+                    <Avatar className="h-14 w-14">
+                      <AvatarFallback className="bg-accent text-white text-lg">
+                        {(seeker.userInfo?.name ?? seeker.id)
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div>
+                      <h3 className="text-xl font-semibold text-primaryDark mb-1">
+                        {seeker.userInfo?.name ?? seeker.id}
+                      </h3>
+                      <p className="font-medium text-secondaryDark mb-1">{seeker.title}</p>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-muted-foreground text-sm mb-3">
+                        {seeker.location && (
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {seeker.location}
+                          </div>
+                        )}
+                        <div className="flex items-center">
+                          <Briefcase className="h-4 w-4 mr-1" />
+                          {seeker.experience}
+                        </div>
+                        {seeker.rating && (
+                          <div className="flex items-center">
+                            <Star className="h-4 w-4 mr-1 text-yellow-500" />
+                            {seeker.rating.toFixed(1)}
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {seeker.bio || "No bio"}
+                      </p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {seeker.skills.slice(0, 3).map((skill) => (
+                          <Badge key={skill} variant="secondary">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {seeker.skills.length > 3 && (
+                          <Badge variant="outline">+{seeker.skills.length - 3}</Badge>
+                        )}
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="absolute right-4 top-4">
+                    <Badge variant="outline" className="text-xs px-2 py-1">
+                      {seeker.availability}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Detailed view */}
+
+          {/* Desktop Right-Side Detail View */}
           <div className="hidden lg:block">
             {selectedSeeker ? (
-              <Card className="sticky top-24">
-                <CardHeader className="text-center">
-                  <Avatar className="mx-auto h-20 w-20">
-                    <AvatarFallback>
-                      {(selectedSeeker.userInfo?.name ?? selectedSeeker.id).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <CardTitle className="mt-2">{selectedSeeker.userInfo?.name ?? selectedSeeker.id}</CardTitle>
-                  <CardDescription>{selectedSeeker.title}</CardDescription>
-                  <div className="text-sm mt-1 text-muted-foreground">
-                    {selectedSeeker.userInfo?.email || "No email"}
-                  </div>
-                  <div className="text-yellow-500 flex items-center justify-center mt-2">
-                    <Star className="h-4 w-4 fill-current" />
-                    <span>{selectedSeeker.rating?.toFixed(1)}</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-1">About</h4>
-                    <p className="text-sm">{selectedSeeker.bio || "No bio"}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-1">Education</h4>
-                    <p className="text-sm">{selectedSeeker.education}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-1">Skills</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedSeeker.skills.map((skill) => (
-                        <Badge key={skill} variant="secondary">{skill}</Badge>
-                      ))}
+              <div className="sticky top-24">
+                <Card>
+                  <CardHeader className="text-center">
+                    <Avatar className="h-20 w-20 mx-auto border">
+                      <AvatarFallback className="bg-accent text-white text-xl">
+                        {(selectedSeeker.userInfo?.name ?? selectedSeeker.id)
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <CardTitle className="mt-2">{selectedSeeker.userInfo?.name}</CardTitle>
+                    <CardDescription className="text-base font-medium">{selectedSeeker.title}</CardDescription>
+                    <div className="flex items-center justify-center gap-1 text-yellow-500">
+                      <Star className="h-4 w-4 fill-current" />
+                      <span>{selectedSeeker.rating?.toFixed(1)}</span>
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-1">Availability</h4>
-                    <Badge variant="outline">{selectedSeeker.availability}</Badge>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-2">
-                  <Button className="w-full bg-accent text-white">Invite to Interview</Button>
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href={`/chat/${selectedSeeker.id}`}>Message Candidate</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span>{selectedSeeker.location}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Briefcase className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span>{selectedSeeker.experience}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">About</h4>
+                      <p className="text-sm">{selectedSeeker.bio}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Education</h4>
+                      <p className="text-sm">{selectedSeeker.education}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Skills</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSeeker.skills.map((skill) => (
+                          <Badge key={skill} variant="secondary">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Availability</h4>
+                      <Badge variant="outline">{selectedSeeker.availability}</Badge>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2">
+                    <Button className="w-full bg-accent hover:bg-accent/90 text-white">Invite to Interview</Button>
+                    <Button variant="outline" className="w-full" asChild>
+                      <a href={`/chat/${selectedSeeker.id}`}>Message Candidate</a>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
             ) : (
               <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  Select a seeker to view details
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">Select a candidate to view details</p>
                 </CardContent>
               </Card>
             )}
           </div>
+
+
         </div>
       )}
     </div>
