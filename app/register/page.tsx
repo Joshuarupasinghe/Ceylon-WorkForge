@@ -90,7 +90,7 @@ export default function RegisterPage() {
         name: formData.name,
         email: firebaseUser.email,
         role: "user",
-        userType: "seeker",
+        userType: null,
         isPaid: false,
         avatarUrl: null,
         createdAt: new Date().toISOString(),

@@ -32,7 +32,6 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateFeaturedListingDrawer } from "./create-featured-listing-drawer"
 
-// Types
 interface FeaturedListing {
   id: string
   jobId: string
@@ -45,8 +44,8 @@ interface FeaturedListing {
   featuredFrom: Date
   featuredUntil: Date
   status: "active" | "expired" | "scheduled"
-  views: number
-  clicks: number
+  views?: number
+  clicks?: number
   dailyStats?: {
     date: string
     views: number
@@ -97,16 +96,30 @@ export function FeaturedListingsTab({
     }
   }
 
+  const now = new Date()
   const filteredListings = featuredListings
+    .map((listing) => {
+      const isScheduled = new Date(listing.featuredFrom) > now
+      const isExpired = new Date(listing.featuredUntil) < now
+  
+      let status: "active" | "expired" | "scheduled" = "active"
+      if (isScheduled) status = "scheduled"
+      else if (isExpired) status = "expired"
+  
+      return {
+        ...listing,
+        status,
+      }
+    })
     .filter((listing) => {
       const matchesSearch =
         listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.skills.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase()))
-
+  
       const matchesStatus = statusFilter === "all" || listing.status === statusFilter
-
+  
       return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
@@ -119,16 +132,19 @@ export function FeaturedListingsTab({
           ? a.featuredUntil.getTime() - b.featuredUntil.getTime()
           : b.featuredUntil.getTime() - a.featuredUntil.getTime()
       } else if (sortBy === "views") {
-        return sortDirection === "asc" ? a.views - b.views : b.views - a.views
+        return sortDirection === "asc"
+          ? (a.views ?? 0) - (b.views ?? 0)
+          : (b.views ?? 0) - (a.views ?? 0)
       } else if (sortBy === "clicks") {
-        return sortDirection === "asc" ? a.clicks - b.clicks : b.clicks - a.clicks
+        return sortDirection === "asc"
+          ? (a.clicks ?? 0) - (b.clicks ?? 0)
+          : (b.clicks ?? 0) - (a.clicks ?? 0)
       }
       return 0
     })
-
-  const handleCreateFeatured = (jobDetails, duration) => {
-    // Pass the job details directly to the parent component's handler
-    onAddFeatured(jobDetails, duration)
+  
+  const handleCreateFeatured = (jobId: string, duration: number) => {
+    onAddFeatured(jobId, duration)
   }
 
   const handleExtendFeatured = () => {
@@ -143,7 +159,6 @@ export function FeaturedListingsTab({
     setIsViewDrawerOpen(true)
   }
 
-  // Generate mock daily stats if they don't exist
   const getListingWithStats = (listing: FeaturedListing): FeaturedListing => {
     if (listing.dailyStats) return listing
 
@@ -174,6 +189,7 @@ export function FeaturedListingsTab({
     const days = differenceInDays(endDate, today)
     return days > 0 ? days : 0
   }
+
 
   return (
     <Card>
@@ -286,10 +302,10 @@ export function FeaturedListingsTab({
                       {format(listing.featuredUntil, "MMM d, yyyy")}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Views:</span> {listing.views.toLocaleString()}
+                      <span className="text-muted-foreground">Views:</span> {(listing.views ?? 0).toLocaleString()}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Clicks:</span> {listing.clicks.toLocaleString()}
+                      <span className="text-muted-foreground">Clicks:</span> {(listing.clicks ?? 0).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -414,16 +430,20 @@ export function FeaturedListingsTab({
                     <div className="grid grid-cols-3 gap-4">
                       <div className="border rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">Total Views</p>
-                        <p className="text-2xl font-semibold">{selectedListing.views.toLocaleString()}</p>
+                        <p className="text-2xl font-semibold">
+                          {(selectedListing.views ?? 0).toLocaleString()}
+                        </p>
                       </div>
                       <div className="border rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">Total Clicks</p>
-                        <p className="text-2xl font-semibold">{selectedListing.clicks.toLocaleString()}</p>
+                        <p className="text-2xl font-semibold">
+                          {(selectedListing.clicks ?? 0).toLocaleString()}
+                        </p>
                       </div>
                       <div className="border rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">CTR</p>
                         <p className="text-2xl font-semibold">
-                          {calculateCTR(selectedListing.views, selectedListing.clicks).toFixed(1)}%
+                          {calculateCTR(selectedListing.views ?? 0, selectedListing.clicks ?? 0).toFixed(1)}%
                         </p>
                       </div>
                     </div>
@@ -440,9 +460,7 @@ export function FeaturedListingsTab({
                                 <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-primary"
-                                    style={{
-                                      width: `${(day.views / 50) * 100}%`,
-                                    }}
+                                    style={{ width: `${(day.views / 50) * 100}%` }}
                                   />
                                 </div>
                               </div>
@@ -451,9 +469,7 @@ export function FeaturedListingsTab({
                                 <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-accent"
-                                    style={{
-                                      width: `${(day.clicks / 20) * 100}%`,
-                                    }}
+                                    style={{ width: `${(day.clicks / 20) * 100}%` }}
                                   />
                                 </div>
                               </div>
@@ -462,11 +478,11 @@ export function FeaturedListingsTab({
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground mt-2">
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-primary"></div>
+                            <div className="w-2 h-2 rounded-full bg-primary" />
                             <span>Views</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-accent"></div>
+                            <div className="w-2 h-2 rounded-full bg-accent" />
                             <span>Clicks</span>
                           </div>
                         </div>
@@ -495,7 +511,9 @@ export function FeaturedListingsTab({
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Extend Featured Period</DialogTitle>
-                      <DialogDescription>Extend the featured period for {selectedListing.title}</DialogDescription>
+                      <DialogDescription>
+                        Extend the featured period for {selectedListing.title}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
@@ -559,6 +577,7 @@ export function FeaturedListingsTab({
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
     </Card>
   )
 }

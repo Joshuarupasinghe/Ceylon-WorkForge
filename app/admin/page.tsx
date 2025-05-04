@@ -29,7 +29,7 @@ import { FeaturedListingsTab } from "@/components/admin/featured-listings-tab"
 import { ReportsTab } from "@/components/admin/reports-tab"
 
 import { db } from "@/lib/firebase"
-import { collection, getDocs, updateDoc, doc } from "firebase/firestore"
+import { collection, getDocs, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore"
 
 interface AdminUser {
   id: string
@@ -40,153 +40,163 @@ interface AdminUser {
 }
 
 
-  export default function AdminPage() {
-    const [isLoading, setIsLoading] = useState(true)
-    const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null)
-    const [checkedAuth, setCheckedAuth] = useState(false)
-  
-    const [users, setUsers] = useState<any[]>([])
-    const [jobSeekers, setJobSeekers] = useState<any[]>([])
-    const [jobs, setJobs] = useState<any[]>([])
-    const [featuredListings, setFeaturedListings] = useState<any[]>([])
-    const [reports, setReports] = useState<any[]>([])
-    const [stats, setStats] = useState({
-      totalUsers: 0,
-      activeUsers: 0,
-      totalJobs: 0,
-      activeJobs: 0,
-      totalApplications: 0,
-      pendingReports: 0,
-      activeFeatured: 0,
-    })
-  
-    useEffect(() => {
-      const stored = localStorage.getItem("user")
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (parsed.role === "admin") {
-          setCurrentAdmin(parsed)
-          fetchAll()
+export default function AdminPage() {
+  const [isLoading, setIsLoading] = useState(true)
+  const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null)
+  const [checkedAuth, setCheckedAuth] = useState(false)
+
+  const [users, setUsers] = useState<any[]>([])
+  const [jobSeekers, setJobSeekers] = useState<any[]>([])
+  const [jobs, setJobs] = useState<any[]>([])
+  const [featuredListings, setFeaturedListings] = useState<any[]>([])
+  const [reports, setReports] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalJobs: 0,
+    activeJobs: 0,
+    totalApplications: 0,
+    pendingReports: 0,
+    activeFeatured: 0,
+  })
+
+  useEffect(() => {
+    const stored = localStorage.getItem("user")
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      if (parsed.role === "admin") {
+        setCurrentAdmin(parsed)
+        fetchAll()
+      }
+    }
+    setCheckedAuth(true)
+  }, [])
+
+  async function fetchAll() {
+    setIsLoading(true)
+    try {
+      const usersSnap = await getDocs(collection(db, "users"))
+      const usersList = usersSnap.docs.map((d) => {
+        const data = d.data()
+        return {
+          id: d.id,
+          ...data,
+          joinedAt: data.createdAt ? format(new Date(data.createdAt), "PPP") : "N/A",
         }
-      }
-      setCheckedAuth(true)
-    }, [])
-  
-    async function fetchAll() {
-      setIsLoading(true)
-      try {
-        const usersSnap = await getDocs(collection(db, "users"))
-        const usersList = usersSnap.docs.map((d) => {
-          const data = d.data()
-          return {
-            id: d.id,
-            ...data,
-            joinedAt: data.createdAt ? format(new Date(data.createdAt), "PPP") : "N/A",
-          }
-        })      
-        setUsers(usersList)
-  
-        const seekersSnap = await getDocs(collection(db, "seekerProfiles"))
-        const seekersList = seekersSnap.docs.map((d) => {
-          const data = d.data()
-          const user = usersList.find((u) => u.id === d.id)
-          return {
-            id: d.id,
-            name: user?.name || "Unnamed",
-            email: user?.email || "No email",
-            createdAt: user?.createdAt || "-",
-            skills: data.skills || [],
-            experience: data.experience || "",
-            education: data.education || "",
-            availability: data.availability || "",
-            salary_expectation: data.salary_expectation || "",
-            status: data.status || "pending",
-            applications: data.applications || 0,
-            joinedAt: user?.createdAt || "-",
-          }
-        })
-        setJobSeekers(seekersList)
-  
-        const jobsSnap = await getDocs(collection(db, "jobs"))
-        const jobsList = jobsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
-        setJobs(jobsList)
-  
-        const featuredSnap = await getDocs(collection(db, "featuredListings"))
-        const featuredList = featuredSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
-        setFeaturedListings(featuredList)
-  
-        const reportsSnap = await getDocs(collection(db, "reports"))
-        const reportsList = reportsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
-        setReports(reportsList)
-  
-        const activeUsers = usersList.filter((u) => u.status === "active").length
-        const activeJobs = jobsList.filter((j) => j.status === "active").length
-        const totalApplications = jobsList.reduce((sum, job) => sum + (job.applications || 0), 0)
-        const pendingReports = reportsList.filter((r) => r.status === "pending").length
-        const activeFeatured = featuredList.filter((f) => f.status === "active").length
-  
-        setStats({
-          totalUsers: usersList.length,
-          activeUsers,
-          totalJobs: jobsList.length,
-          activeJobs,
-          totalApplications,
-          pendingReports,
-          activeFeatured,
-        })
-      } catch (e) {
-        console.error("Error loading data:", e)
-      } finally {
-        setIsLoading(false)
-      }
+      })
+      setUsers(usersList)
+
+      const seekersSnap = await getDocs(collection(db, "seekerProfiles"))
+      const seekersList = seekersSnap.docs.map((d) => {
+        const data = d.data()
+        const user = usersList.find((u) => u.id === d.id)
+        return {
+          id: d.id,
+          name: user?.name || "Unnamed",
+          email: user?.email || "No email",
+          createdAt: user?.createdAt || "-",
+          skills: data.skills || [],
+          experience: data.experience || "",
+          education: data.education || "",
+          availability: data.availability || "",
+          salary_expectation: data.salary_expectation || "",
+          status: data.status || "pending",
+          applications: data.applications || 0,
+          joinedAt: user?.createdAt || "-",
+        }
+      })
+      setJobSeekers(seekersList)
+
+      const jobsSnap = await getDocs(collection(db, "jobs"))
+      const jobsList = jobsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      setJobs(jobsList)
+
+      const featuredSnap = await getDocs(collection(db, "featuredListings"))
+      const featuredList = featuredSnap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          featuredFrom: data.createdAt?.toDate?.() || new Date(),
+          featuredUntil: data.expiresAt?.toDate?.() || new Date(),
+        };
+      });
+
+
+      setFeaturedListings(featuredList)
+
+      const reportsSnap = await getDocs(collection(db, "reports"))
+      const reportsList = reportsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      setReports(reportsList)
+
+      const activeUsers = usersList.filter((u) => u.status === "active").length
+      const activeJobs = jobsList.filter((j) => j.status === "active").length
+      const totalApplications = jobsList.reduce((sum, job) => sum + (job.applications || 0), 0)
+      const pendingReports = reportsList.filter((r) => r.status === "pending").length
+      const activeFeatured = featuredList.filter((f) => f.status === "active").length
+
+      setStats({
+        totalUsers: usersList.length,
+        activeUsers,
+        totalJobs: jobsList.length,
+        activeJobs,
+        totalApplications,
+        pendingReports,
+        activeFeatured,
+      })
+    } catch (e) {
+      console.error("Error loading data:", e)
+    } finally {
+      setIsLoading(false)
     }
-  
-    const handleApproveUser = async (id: string) => {
-      await updateDoc(doc(db, "users", id), { status: "active" })
-      fetchAll()
-    }
-  
-    const handleRejectUser = async (id: string) => {
-      await updateDoc(doc(db, "users", id), { status: "rejected" })
-      fetchAll()
-    }
-  
-    const handleResolveReport = async (id: string) => {
-      await updateDoc(doc(db, "reports", id), { status: "resolved" })
-      fetchAll()
-    }
-  
-    const handleLogout = () => {
-      localStorage.removeItem("user")
-      window.location.href = "/admin-login"
-    }
-  
-    if (!checkedAuth) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
-        </div>
-      )
-    }
-  
-    if (!currentAdmin || currentAdmin.role !== "admin") {
-      return (
-        <div className="flex flex-col items-center justify-center h-screen gap-4">
-          <Lock className="w-12 h-12 text-muted-foreground" />
-          <h2 className="text-xl font-semibold">Admin Access Required</h2>
-          <Button onClick={handleLogout}>Go to Login</Button>
-        </div>
-      )
-    }
-  
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
-        </div>
-      )
-    }
-    
+  }
+
+  const handleApproveUser = async (id: string) => {
+    await updateDoc(doc(db, "users", id), { status: "active" })
+    fetchAll()
+  }
+
+  const handleRejectUser = async (id: string) => {
+    await updateDoc(doc(db, "users", id), { status: "rejected" })
+    fetchAll()
+  }
+
+  const handleResolveReport = async (id: string) => {
+    await updateDoc(doc(db, "reports", id), { status: "resolved" })
+    fetchAll()
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    window.location.href = "/admin-login"
+  }
+
+  if (!checkedAuth) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+      </div>
+    )
+  }
+
+  if (!currentAdmin || currentAdmin.role !== "admin") {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <Lock className="w-12 h-12 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">Admin Access Required</h2>
+        <Button onClick={handleLogout}>Go to Login</Button>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+      </div>
+    )
+  }
+
 
   return (
     <div className="p-4">
@@ -276,7 +286,44 @@ interface AdminUser {
         </TabsContent>
 
         <TabsContent value="featured">
-          <FeaturedListingsTab featuredListings={featuredListings} />
+          <FeaturedListingsTab
+            featuredListings={featuredListings}
+            availableJobs={jobs}
+            onAddFeatured={async (jobDetails, duration) => {
+              const now = new Date()
+              const until = new Date(now)
+              until.setDate(now.getDate() + duration)
+
+              await addDoc(collection(db, "featuredListings"), {
+                ...jobDetails,
+                featuredFrom: now.toISOString(),
+                featuredUntil: until.toISOString(),
+                views: 0,
+                clicks: 0,
+                status: "active",
+              })
+
+              fetchAll()
+            }}
+            onRemoveFeatured={async (id) => {
+              await deleteDoc(doc(db, "featuredListings", id))
+              fetchAll()
+            }}
+            onExtendFeatured={async (id, days) => {
+              const listing = featuredListings.find((f) => f.id === id)
+              if (!listing) return
+
+              const currentUntil = new Date(listing.featuredUntil)
+              currentUntil.setDate(currentUntil.getDate() + days)
+
+              await updateDoc(doc(db, "featuredListings", id), {
+                featuredUntil: currentUntil.toISOString(),
+              })
+
+              fetchAll()
+            }}
+          />
+
         </TabsContent>
 
         <TabsContent value="reports">

@@ -2,6 +2,8 @@
 
 import type React from "react"
 import { createContext, useState, useContext, useEffect } from "react"
+import { doc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 // Define user types
 type UserType = "seeker" | "poster"
@@ -13,7 +15,7 @@ interface User {
   name: string | null
   email: string | null
   role: UserRole
-  userType?: UserType
+  userType?: UserType | null
   isPaid: boolean
   avatarUrl?: string | null
 }
@@ -84,34 +86,26 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     console.log("Login attempt:", { email, password: password.length + " chars" })
 
-    // Find user in mock database
     const foundUser = mockUsers.find((u) => {
       const emailMatch = u.email.toLowerCase() === email.toLowerCase()
       const passwordMatch = u.password === password
-      console.log("Checking user:", u.email, "Email match:", emailMatch, "Password match:", passwordMatch)
       return emailMatch && passwordMatch
     })
 
     if (!foundUser) {
-      console.error("No matching user found in database")
       throw new Error("Invalid email or password")
     }
 
-    console.log("User found:", foundUser.email, foundUser.role)
-
-    // Create user object without password
     const { password: _, ...userWithoutPassword } = foundUser
     setUser(userWithoutPassword)
   }
 
   // Register function
   const register = async (email: string, password: string, name: string) => {
-    // Check if user already exists
     if (mockUsers.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
       throw new Error("User with this email already exists")
     }
 
-    // Create new user
     const newUser = {
       id: `user-${Date.now()}`,
       email,
@@ -121,10 +115,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isPaid: false,
     }
 
-    // Add to mock database
     mockUsers.push(newUser)
 
-    // Set user without password
     const { password: _, ...userWithoutPassword } = newUser
     setUser(userWithoutPassword)
   }
@@ -134,28 +126,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null)
   }
 
-  // Update user type
+  // ✅ Updated: Update user type in Firestore + context + localStorage
   const updateUserType = async (userType: UserType) => {
     if (!user) throw new Error("No user logged in")
 
-    // Update user in context
-    setUser({ ...user, userType })
+    const userRef = doc(db, "users", user.id)
+    await updateDoc(userRef, { userType })
 
-    // Update user in mock database
-    const userIndex = mockUsers.findIndex((u) => u.id === user.id)
-    if (userIndex >= 0) {
-      mockUsers[userIndex] = { ...mockUsers[userIndex], userType }
-    }
+    const updatedUser = { ...user, userType }
+    setUser(updatedUser)
+    localStorage.setItem("user", JSON.stringify(updatedUser))
   }
 
   // Update payment status
   const updatePaymentStatus = async (isPaid: boolean) => {
     if (!user) throw new Error("No user logged in")
 
-    // Update user in context
     setUser({ ...user, isPaid })
 
-    // Update user in mock database
     const userIndex = mockUsers.findIndex((u) => u.id === user.id)
     if (userIndex >= 0) {
       mockUsers[userIndex] = { ...mockUsers[userIndex], isPaid }
@@ -166,10 +154,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (profile: Partial<User>) => {
     if (!user) throw new Error("No user logged in")
 
-    // Update user in context
-    setUser({ ...user, ...profile })
+    const updatedUser = { ...user, ...profile }
+    setUser(updatedUser)
 
-    // Update user in mock database
     const userIndex = mockUsers.findIndex((u) => u.id === user.id)
     if (userIndex >= 0) {
       mockUsers[userIndex] = { ...mockUsers[userIndex], ...profile }
