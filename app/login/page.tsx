@@ -4,7 +4,14 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/context/user-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
@@ -13,7 +20,15 @@ import { useToast } from "@/components/ui/use-toast"
 
 import { auth, db, googleProvider } from "@/lib/firebase"
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  where
+} from "firebase/firestore"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -88,15 +103,26 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider)
       const googleUser = result.user
+      const email = googleUser.email
 
-      const userRef = doc(db, "users", googleUser.uid)
-      const userSnap = await getDoc(userRef)
+      if (!email) throw new Error("Google account missing email address.")
 
-      if (!userSnap.exists()) {
-        const userData = {
+      // Check if user with same email already exists
+      const usersRef = collection(db, "users")
+      const existingQuery = query(usersRef, where("email", "==", email))
+      const existingSnap = await getDocs(existingQuery)
+
+      let userData
+
+      if (!existingSnap.empty) {
+        // Use existing user data
+        userData = existingSnap.docs[0].data()
+      } else {
+        // Create new user document
+        userData = {
           id: googleUser.uid,
           name: googleUser.displayName,
-          email: googleUser.email,
+          email: email,
           avatarUrl: googleUser.photoURL,
           role: "user",
           userType: null,
@@ -104,19 +130,18 @@ export default function LoginPage() {
           createdAt: new Date().toISOString(),
         }
 
-        await setDoc(userRef, userData)
-        setUser(userData)
-      } else {
-        setUser(userSnap.data())
+        await setDoc(doc(db, "users", googleUser.uid), userData)
       }
+
+      setUser(userData)
 
       toast({
         title: "Login successful",
-        description: `Welcome, ${googleUser.displayName || "User"}!`,
+        description: `Welcome, ${userData.name || "User"}!`,
       })
 
       setTimeout(() => {
-        router.push("/role-selection")
+        router.push(userData.isPaid ? "/role-selection" : "/payment")
       }, 200)
 
     } catch (error: any) {
@@ -132,7 +157,9 @@ export default function LoginPage() {
       <Card>
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center text-primaryDark">Log in</CardTitle>
-          <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
+          <CardDescription className="text-center">
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -166,7 +193,11 @@ export default function LoginPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-accent hover:bg-accent/90 text-white"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

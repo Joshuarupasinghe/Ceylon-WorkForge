@@ -13,7 +13,15 @@ import { useToast } from "@/components/ui/use-toast"
 
 import { auth, db, googleProvider } from "@/lib/firebase"
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth"
-import { doc, setDoc, getDoc } from "firebase/firestore"
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where
+} from "firebase/firestore"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -122,12 +130,23 @@ export default function RegisterPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider)
       const googleUser = result.user
+      const email = googleUser.email
 
-      const userRef = doc(db, "users", googleUser.uid)
-      const userSnap = await getDoc(userRef)
+      if (!email) throw new Error("Google account missing email.")
 
-      if (!userSnap.exists()) {
-        const userData = {
+      // Check if user already exists by email
+      const usersRef = collection(db, "users")
+      const existingQuery = query(usersRef, where("email", "==", email))
+      const existingSnap = await getDocs(existingQuery)
+
+      let userData
+
+      if (!existingSnap.empty) {
+        // Existing user found
+        userData = existingSnap.docs[0].data()
+      } else {
+        // New user
+        userData = {
           id: googleUser.uid,
           name: googleUser.displayName,
           email: googleUser.email,
@@ -138,19 +157,17 @@ export default function RegisterPage() {
           createdAt: new Date().toISOString(),
         }
 
-        await setDoc(userRef, userData)
-        setUser(userData)
-      } else {
-        setUser(userSnap.data())
+        await setDoc(doc(db, "users", googleUser.uid), userData)
       }
 
+      setUser(userData)
       toast({
         title: "Google sign-in successful",
         description: "Welcome! Please proceed with payment.",
       })
 
       setTimeout(() => {
-        router.push("/payment")
+        router.push(userData.isPaid ? "/role-selection" : "/payment")
       }, 200)
 
     } catch (error: any) {
