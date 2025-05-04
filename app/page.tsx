@@ -1,22 +1,63 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Link from "next/link"
 import { ArrowRight, Briefcase, Search, Users } from "lucide-react"
 
+interface FeaturedListing {
+  id: string
+  title: string
+  company: string
+  location: string
+  jobType: string
+  description: string
+  skills: string[]
+  createdAt?: any
+  expiresAt?: any
+  views?: number
+  clicks?: number
+}
+
 export default function Home() {
+  const [featuredListings, setFeaturedListings] = useState<FeaturedListing[]>([])
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      const snapshot = await getDocs(collection(db, "featuredListings"))
+      const now = new Date()
+      const listings = snapshot.docs
+        .map((doc) => {
+          const data = doc.data()
+          const from = data.createdAt?.toDate?.() || new Date()
+          const until = data.expiresAt?.toDate?.() || new Date()
+          const isScheduled = from > now
+          const isExpired = until < now
+          if (isScheduled || isExpired) return null
+          return {
+            id: doc.id,
+            ...data,
+          } as FeaturedListing
+        })
+        .filter((item): item is FeaturedListing => item !== null)
+      setFeaturedListings(listings)
+    }
+    fetchFeatured()
+  }, [])
+
   return (
     <div className="flex flex-col gap-12 pb-32">
       {/* Hero Section */}
       <section className="relative bg-primaryDark text-white py-36 overflow-hidden">
-        {/* Background Images */}
-        <div className="absolute inset-0 z-0 flex flex-wrap justify-center items-center gap-8 opacity-30  ">
+        <div className="absolute inset-0 z-0 flex flex-wrap justify-center items-center gap-8 opacity-30">
           <img src="/hero 1.png" className="rounded-2xl w-60 h-auto" alt="Hero 1" />
           <img src="/hero2.png" className="rounded-2xl w-60 h-auto" alt="Hero 2" />
           <img src="/hero3.png" className="rounded-2xl w-60 h-auto" alt="Hero 3" />
         </div>
-
-        {/* Hero Content */}
         <div className="relative z-10 container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">Connect with Sri Lanka's Top Talent</h1>
@@ -140,29 +181,33 @@ export default function Home() {
 
           <TabsContent value="jobs" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((job) => (
-                <Card key={job} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="text-primaryDark">Senior Software Engineer</CardTitle>
-                    <CardDescription>Colombo, Sri Lanka • Full-time</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600 mb-4">
-                      We're looking for an experienced software engineer to join our growing team...
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">React</span>
-                      <span className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">Node.js</span>
-                      <span className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">TypeScript</span>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/register">View Details</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+              {featuredListings.length > 0 ? (
+                featuredListings.map((job) => (
+                  <Card key={job.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="text-primaryDark">{job.title}</CardTitle>
+                      <CardDescription>{job.location} • {job.jobType}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-3">{job.description}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {job.skills.map((skill) => (
+                          <span key={skill} className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href={`/jobs/${job.id}`}>View Details</Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No featured jobs available</p>
+              )}
             </div>
             <div className="text-center mt-8">
               <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white">
