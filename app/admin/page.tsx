@@ -73,17 +73,22 @@ export default function AdminPage() {
       const seekersSnap = await getDocs(collection(db, "seekerProfiles"))
       const seekersList = seekersSnap.docs.map((d) => {
         const data = d.data()
+        const user = usersList.find((u) => u.id === d.id) // Match by ID
         return {
           id: d.id,
-          title: data.title || "",
+          name: user?.name || "Unnamed",
+          email: user?.email || "No email",
           skills: data.skills || [],
           experience: data.experience || "",
           education: data.education || "",
           availability: data.availability || "",
           salary_expectation: data.salary_expectation || "",
           status: data.status || "pending",
+          applications: data.applications || 0,
+          joinedAt: user?.createdAt || "-",
         }
       })
+      
       setJobSeekers(seekersList)
 
       const jobsSnap = await getDocs(collection(db, "jobs"))
