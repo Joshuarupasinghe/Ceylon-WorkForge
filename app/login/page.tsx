@@ -11,9 +11,9 @@ import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-import { auth, db } from "@/lib/firebase"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
+import { auth, db, googleProvider } from "@/lib/firebase"
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -53,32 +53,75 @@ export default function LoginPage() {
       const userCred = await signInWithEmailAndPassword(auth, formData.email, formData.password)
       const uid = userCred.user.uid
 
-      // Fetch user data from Firestore
       const userDoc = await getDoc(doc(db, "users", uid))
-
       if (!userDoc.exists()) {
         throw new Error("User profile not found in Firestore.")
       }
 
       const userData = userDoc.data()
       setUser(userData)
-toast({
-  title: "Login successful",
-  description: `Welcome back, ${userData.name || "User"}!`,
-})
 
-// ⏱ Allow context to propagate before redirect
-setTimeout(() => {
-  if (userData.role === "admin") {
-    router.push("/admin")
-  } else {
-    router.push("/role-selection")
-  }
-}, 200)
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${userData.name || "User"}!`,
+      })
+
+      setTimeout(() => {
+        if (userData.role === "admin") {
+          router.push("/admin")
+        } else {
+          router.push("/role-selection")
+        }
+      }, 200)
 
     } catch (error: any) {
       console.error("Login error:", error)
       setError(error.message || "Invalid email or password")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true)
+    setError("")
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      const googleUser = result.user
+
+      const userRef = doc(db, "users", googleUser.uid)
+      const userSnap = await getDoc(userRef)
+
+      if (!userSnap.exists()) {
+        const userData = {
+          id: googleUser.uid,
+          name: googleUser.displayName,
+          email: googleUser.email,
+          avatarUrl: googleUser.photoURL,
+          role: "user",
+          userType: null,
+          isPaid: false,
+          createdAt: new Date().toISOString(),
+        }
+
+        await setDoc(userRef, userData)
+        setUser(userData)
+      } else {
+        setUser(userSnap.data())
+      }
+
+      toast({
+        title: "Login successful",
+        description: `Welcome, ${googleUser.displayName || "User"}!`,
+      })
+
+      setTimeout(() => {
+        router.push("/role-selection")
+      }, 200)
+
+    } catch (error: any) {
+      console.error("Google login error:", error)
+      setError("Google login failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -131,6 +174,22 @@ setTimeout(() => {
                 </>
               ) : (
                 "Log in"
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              className="w-full bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in with Google...
+                </>
+              ) : (
+                "Sign in with Google"
               )}
             </Button>
 

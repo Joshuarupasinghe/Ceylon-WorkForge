@@ -1,7 +1,8 @@
 // lib/firebase.ts
 import { initializeApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
+import { getAuth, GoogleAuthProvider } from "firebase/auth"
 import {
+  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentSingleTabManager,
@@ -17,6 +18,8 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+const auth = getAuth(app)
+const googleProvider = new GoogleAuthProvider()
 
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
@@ -27,4 +30,5 @@ export const db = initializeFirestore(app, {
   }),
 })
 
-export const auth = getAuth(app)
+export { auth, googleProvider }
+

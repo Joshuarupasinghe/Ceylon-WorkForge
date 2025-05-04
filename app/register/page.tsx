@@ -11,9 +11,9 @@ import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-import { auth, db } from "@/lib/firebase"
-import { createUserWithEmailAndPassword } from "firebase/auth"
-import { doc, setDoc } from "firebase/firestore"
+import { auth, db, googleProvider } from "@/lib/firebase"
+import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth"
+import { doc, setDoc, getDoc } from "firebase/firestore"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -80,11 +80,9 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      // Create user with Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
       const firebaseUser = userCredential.user
 
-      // User data to store in Firestore
       const userData = {
         id: firebaseUser.uid,
         name: formData.name,
@@ -96,26 +94,68 @@ export default function RegisterPage() {
         createdAt: new Date().toISOString(),
       }
 
-      // Save user data in Firestore
       await setDoc(doc(db, "users", firebaseUser.uid), userData)
 
-      // Store user in context
       setUser(userData)
       sessionStorage.setItem("justRegistered", "true")
+
       toast({
         title: "Registration successful",
         description: "Your account has been created. Please complete the payment process.",
       })
 
-      // ⏱ Ensure user context updates before navigation
       setTimeout(() => {
         router.push("/payment")
       }, 200)
 
-
     } catch (error: any) {
       console.error("Registration error:", error)
       setErrors({ form: error.message || "Registration failed. Please try again." })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleRegister = async () => {
+    setIsLoading(true)
+    setErrors({})
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      const googleUser = result.user
+
+      const userRef = doc(db, "users", googleUser.uid)
+      const userSnap = await getDoc(userRef)
+
+      if (!userSnap.exists()) {
+        const userData = {
+          id: googleUser.uid,
+          name: googleUser.displayName,
+          email: googleUser.email,
+          avatarUrl: googleUser.photoURL,
+          role: "user",
+          userType: null,
+          isPaid: false,
+          createdAt: new Date().toISOString(),
+        }
+
+        await setDoc(userRef, userData)
+        setUser(userData)
+      } else {
+        setUser(userSnap.data())
+      }
+
+      toast({
+        title: "Google sign-in successful",
+        description: "Welcome! Please proceed with payment.",
+      })
+
+      setTimeout(() => {
+        router.push("/payment")
+      }, 200)
+
+    } catch (error: any) {
+      console.error("Google registration error:", error)
+      setErrors({ form: "Google sign-in failed. Please try again." })
     } finally {
       setIsLoading(false)
     }
@@ -183,6 +223,22 @@ export default function RegisterPage() {
                 </>
               ) : (
                 "Create account"
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              className="w-full bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleGoogleRegister}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing up with Google...
+                </>
+              ) : (
+                "Sign up with Google"
               )}
             </Button>
 
