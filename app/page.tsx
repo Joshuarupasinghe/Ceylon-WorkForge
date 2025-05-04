@@ -24,29 +24,38 @@ interface FeaturedListing {
 }
 
 export default function Home() {
-  const [featuredListings, setFeaturedListings] = useState<FeaturedListing[]>([])
+  const [featuredJobs, setFeaturedJobs] = useState<FeaturedListing[]>([])
+  const [featuredTalents, setFeaturedTalents] = useState<FeaturedListing[]>([])
 
   useEffect(() => {
-    const fetchFeatured = async () => {
+    const fetchListings = async () => {
       const snapshot = await getDocs(collection(db, "featuredListings"))
       const now = new Date()
-      const listings = snapshot.docs
-        .map((doc) => {
-          const data = doc.data()
-          const from = data.createdAt?.toDate?.() || new Date()
-          const until = data.expiresAt?.toDate?.() || new Date()
-          const isScheduled = from > now
-          const isExpired = until < now
-          if (isScheduled || isExpired) return null
-          return {
-            id: doc.id,
-            ...data,
-          } as FeaturedListing
-        })
-        .filter((item): item is FeaturedListing => item !== null)
-      setFeaturedListings(listings)
+
+      const jobs: FeaturedListing[] = []
+      const talents: FeaturedListing[] = []
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        const from = data.createdAt?.toDate?.() || new Date()
+        const until = data.expiresAt?.toDate?.() || new Date()
+
+        if (from > now || until < now) return // only active listings
+
+        const listing = {
+          id: doc.id,
+          ...data,
+        } as FeaturedListing
+
+        if (listing.type === "job") jobs.push(listing)
+        if (listing.type === "talent") talents.push(listing)
+      })
+
+      setFeaturedJobs(jobs)
+      setFeaturedTalents(talents)
     }
-    fetchFeatured()
+
+    fetchListings()
   }, [])
 
   return (
@@ -175,14 +184,15 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-primaryDark">Featured Listings</h2>
             <TabsList>
               <TabsTrigger value="jobs">Jobs</TabsTrigger>
-              <TabsTrigger value="seekers">Talent</TabsTrigger>
+              <TabsTrigger value="talents">Talent</TabsTrigger>
             </TabsList>
           </div>
 
+          {/* Featured Jobs Tab */}
           <TabsContent value="jobs" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredListings.length > 0 ? (
-                featuredListings.map((job) => (
+              {featuredJobs.length > 0 ? (
+                featuredJobs.map((job) => (
                   <Card key={job.id} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <CardTitle className="text-primaryDark">{job.title}</CardTitle>
@@ -209,50 +219,42 @@ export default function Home() {
                 <p className="text-muted-foreground">No featured jobs available</p>
               )}
             </div>
-            <div className="text-center mt-8">
-              <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white">
-                <Link href="/register">
-                  View All Jobs <Search className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
           </TabsContent>
 
-          <TabsContent value="seekers" className="space-y-6">
+          {/* Featured Talents Tab */}
+          <TabsContent value="talents" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((seeker) => (
-                <Card key={seeker} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="text-primaryDark">Full Stack Developer</CardTitle>
-                    <CardDescription>Kandy, Sri Lanka • 5 years exp.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Experienced developer with a strong background in web applications and cloud services...
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">JavaScript</span>
-                      <span className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">AWS</span>
-                      <span className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">MongoDB</span>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/register">View Profile</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-            <div className="text-center mt-8">
-              <Button asChild variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white">
-                <Link href="/register">
-                  View All Talent <Search className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+              {featuredTalents.length > 0 ? (
+                featuredTalents.map((talent) => (
+                  <Card key={talent.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="text-primaryDark">{talent.title}</CardTitle>
+                      <CardDescription>{talent.location} • {talent.experience} experience</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-3">{talent.description}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {talent.skills.map((skill) => (
+                          <span key={skill} className="bg-subtle/50 text-secondaryDark text-xs px-2 py-1 rounded">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href={`/talents/${talent.id}`}>View Profile</Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No featured talents available</p>
+              )}
             </div>
           </TabsContent>
         </Tabs>
+
       </section>
 
       {/* CTA Section */}

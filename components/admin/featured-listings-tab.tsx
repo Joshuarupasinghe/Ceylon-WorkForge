@@ -101,11 +101,11 @@ export function FeaturedListingsTab({
     .map((listing) => {
       const isScheduled = new Date(listing.featuredFrom) > now
       const isExpired = new Date(listing.featuredUntil) < now
-  
+
       let status: "active" | "expired" | "scheduled" = "active"
       if (isScheduled) status = "scheduled"
       else if (isExpired) status = "expired"
-  
+
       return {
         ...listing,
         status,
@@ -117,9 +117,9 @@ export function FeaturedListingsTab({
         listing.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
         listing.skills.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase()))
-  
+
       const matchesStatus = statusFilter === "all" || listing.status === statusFilter
-  
+
       return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
@@ -142,7 +142,7 @@ export function FeaturedListingsTab({
       }
       return 0
     })
-  
+
   const handleCreateFeatured = (jobId: string, duration: number) => {
     onAddFeatured(jobId, duration)
   }
@@ -255,7 +255,7 @@ export function FeaturedListingsTab({
                     <div>
                       <h3 className="font-medium text-lg">{listing.title}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {listing.company} • {listing.location} • {listing.jobType}
+                        {listing.company} • {listing.location} • {listing.type === "job" ? listing.jobType : listing.experience}
                       </p>
                     </div>
                     <Badge
@@ -335,7 +335,8 @@ export function FeaturedListingsTab({
                 <div>
                   <h2 className="text-xl font-semibold">{selectedListing.title}</h2>
                   <p className="text-muted-foreground">
-                    {selectedListing.company} • {selectedListing.location} • {selectedListing.jobType}
+                    {selectedListing.company} • {selectedListing.location} •{" "}
+                    {selectedListing.type === "job" ? selectedListing.jobType : selectedListing.experience}
                   </p>
                 </div>
                 <Badge
