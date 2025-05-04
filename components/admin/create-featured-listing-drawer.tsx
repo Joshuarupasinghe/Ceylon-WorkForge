@@ -23,7 +23,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 
-import { db } from "@/lib/firebase" // adjust path if needed
+import { db } from "@/lib/firebase"
 import { collection, addDoc, Timestamp } from "firebase/firestore"
 
 interface CreateFeaturedListingDrawerProps {
@@ -35,10 +35,12 @@ export function CreateFeaturedListingDrawer({
   isOpen,
   onOpenChange,
 }: CreateFeaturedListingDrawerProps) {
+  const [listingType, setListingType] = useState<"job" | "talent">("job")
   const [jobTitle, setJobTitle] = useState("")
   const [company, setCompany] = useState("")
   const [location, setLocation] = useState("")
   const [jobType, setJobType] = useState("Full-time")
+  const [experience, setExperience] = useState("6 months")
   const [description, setDescription] = useState("")
   const [skillsInput, setSkillsInput] = useState("")
   const [selectedDuration, setSelectedDuration] = useState("7")
@@ -53,16 +55,24 @@ export function CreateFeaturedListingDrawer({
     const now = Timestamp.now()
     const expires = Timestamp.fromDate(new Date(now.toDate().getTime() + Number(selectedDuration) * 86400000))
 
-    const jobDetails = {
+    const jobDetails: Record<string, any> = {
       title: jobTitle,
       company,
       location,
-      jobType,
       description,
       skills,
       featured: true,
       createdAt: now,
       expiresAt: expires,
+      type: listingType,
+      views: 0,
+      clicks: 0,
+    }
+
+    if (listingType === "job") {
+      jobDetails.jobType = jobType
+    } else {
+      jobDetails.experience = experience
     }
 
     try {
@@ -75,29 +85,50 @@ export function CreateFeaturedListingDrawer({
   }
 
   const resetForm = () => {
+    setListingType("job")
     setJobTitle("")
     setCompany("")
     setLocation("")
     setJobType("Full-time")
+    setExperience("6 months")
     setDescription("")
     setSkillsInput("")
     setSelectedDuration("7")
     setHasEdits(false)
   }
 
-  const isFormValid = jobTitle && company && location && jobType && description && skillsInput
+  const isFormValid = jobTitle && company && location && description && skillsInput
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
       <DrawerContent side="right" className="h-full overflow-hidden flex flex-col">
         <DrawerHeader className="text-left bg-background">
           <DrawerTitle>Create Featured Listing</DrawerTitle>
-          <DrawerDescription>Create a new job listing and feature it on the platform.</DrawerDescription>
+          <DrawerDescription>Create a new listing and feature it on the platform.</DrawerDescription>
         </DrawerHeader>
         <div className="px-4 flex-1 overflow-y-auto">
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="jobTitle">Job Title</Label>
+              <Label htmlFor="listingType">Listing Type</Label>
+              <Select
+                value={listingType}
+                onValueChange={(value) => {
+                  setListingType(value as "job" | "talent")
+                  setHasEdits(true)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select listing type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="job">Job</SelectItem>
+                  <SelectItem value="talent">Talent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="jobTitle">{listingType === "job" ? "Job Title" : "Talent Title"}</Label>
               <Input
                 id="jobTitle"
                 value={jobTitle}
@@ -105,7 +136,7 @@ export function CreateFeaturedListingDrawer({
                   setJobTitle(e.target.value)
                   setHasEdits(true)
                 }}
-                placeholder="e.g. Senior Software Engineer"
+                placeholder={listingType === "job" ? "e.g. Senior Software Engineer" : "e.g. UI/UX Designer"}
               />
             </div>
 
@@ -135,30 +166,54 @@ export function CreateFeaturedListingDrawer({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="jobType">Job Type</Label>
-              <Select
-                value={jobType}
-                onValueChange={(value) => {
-                  setJobType(value)
-                  setHasEdits(true)
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select job type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
-                  <SelectItem value="Contract">Contract</SelectItem>
-                  <SelectItem value="Freelance">Freelance</SelectItem>
-                  <SelectItem value="Remote">Remote</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {listingType === "job" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="jobType">Job Type</Label>
+                <Select
+                  value={jobType}
+                  onValueChange={(value) => {
+                    setJobType(value)
+                    setHasEdits(true)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Freelance">Freelance</SelectItem>
+                    <SelectItem value="Remote">Remote</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Label htmlFor="experience">Experience</Label>
+                <Select
+                  value={experience}
+                  onValueChange={(value) => {
+                    setExperience(value)
+                    setHasEdits(true)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select experience" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="6 months">6 months</SelectItem>
+                    <SelectItem value="1 year">1 year</SelectItem>
+                    <SelectItem value="2 years">2 years</SelectItem>
+                    <SelectItem value="5 years">5 years</SelectItem>
+                    <SelectItem value="10+ years">10+ years</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid gap-2">
-              <Label htmlFor="description">Job Description</Label>
+              <Label htmlFor="description">{listingType === "job" ? "Job Description" : "Talent Bio"}</Label>
               <Textarea
                 id="description"
                 value={description}
@@ -166,7 +221,7 @@ export function CreateFeaturedListingDrawer({
                   setDescription(e.target.value)
                   setHasEdits(true)
                 }}
-                placeholder="Describe the job role, responsibilities, and requirements..."
+                placeholder={listingType === "job" ? "Describe the job role, responsibilities, and requirements..." : "Describe this talent's expertise, background, and strengths..."}
                 rows={4}
               />
             </div>
