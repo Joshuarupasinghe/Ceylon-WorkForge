@@ -93,6 +93,7 @@ export default function RegisterPage() {
         userType: "seeker",
         isPaid: false,
         avatarUrl: null,
+        createdAt: new Date().toISOString(),
       }
 
       // Save user data in Firestore
@@ -100,16 +101,16 @@ export default function RegisterPage() {
 
       // Store user in context
       setUser(userData)
-sessionStorage.setItem("justRegistered", "true")
-toast({
-  title: "Registration successful",
-  description: "Your account has been created. Please complete the payment process.",
-})
+      sessionStorage.setItem("justRegistered", "true")
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created. Please complete the payment process.",
+      })
 
-// ⏱ Ensure user context updates before navigation
-setTimeout(() => {
-  router.push("/payment")
-}, 200)
+      // ⏱ Ensure user context updates before navigation
+      setTimeout(() => {
+        router.push("/payment")
+      }, 200)
 
 
     } catch (error: any) {
