@@ -35,15 +35,20 @@ export function JobSeekersTab({ jobSeekers, onApproveJobSeeker, onRejectJobSeeke
   const router = useRouter()
 
   const filteredJobSeekers = jobSeekers.filter((seeker) => {
+    const name = seeker.name?.toLowerCase() || ""
+    const email = seeker.email?.toLowerCase() || ""
+    const skills = Array.isArray(seeker.skills) ? seeker.skills : []
+
     const matchesSearch =
-      seeker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      seeker.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      seeker.skills.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase()))
+      name.includes(searchTerm.toLowerCase()) ||
+      email.includes(searchTerm.toLowerCase()) ||
+      skills.some((skill) => skill?.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesStatus = statusFilter === "all" || seeker.status === statusFilter
 
     return matchesSearch && matchesStatus
   })
+
 
   return (
     <Card>

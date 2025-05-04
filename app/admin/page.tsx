@@ -1,57 +1,78 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Lock, Loader2 } from "lucide-react";
-import { UsersTab } from "@/components/admin/users-tab";
-import { JobSeekersTab } from "@/components/admin/job-seekers-tab";
-import { JobsTab } from "@/components/admin/jobs-tab";
-import { FeaturedListingsTab } from "@/components/admin/featured-listings-tab";
-import { ReportsTab } from "@/components/admin/reports-tab";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/lib/firebase";
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { format } from "date-fns"
 import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-} from "firebase/firestore";
+  Loader2,
+  Lock,
+  User,
+  Users,
+  Briefcase,
+  Star,
+  AlertCircle,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+import { UsersTab } from "@/components/admin/users-tab"
+import { JobSeekersTab } from "@/components/admin/job-seekers-tab"
+import { JobsTab } from "@/components/admin/jobs-tab"
+import { FeaturedListingsTab } from "@/components/admin/featured-listings-tab"
+import { ReportsTab } from "@/components/admin/reports-tab"
+
+import { db } from "@/lib/firebase"
+import { collection, getDocs, updateDoc, doc } from "firebase/firestore"
 
 interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  isPaid?: boolean;
+  id: string
+  name: string
+  email: string
+  role: string
+  isPaid?: boolean
 }
 
 export default function AdminPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
-
-  const [users, setUsers] = useState<any[]>([]);
-  const [jobSeekers, setJobSeekers] = useState<any[]>([]);
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [featuredListings, setFeaturedListings] = useState<any[]>([]);
-  const [reports, setReports] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true)
+  const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null)
+  const [users, setUsers] = useState<any[]>([])
+  const [jobSeekers, setJobSeekers] = useState<any[]>([])
+  const [jobs, setJobs] = useState<any[]>([])
+  const [featuredListings, setFeaturedListings] = useState<any[]>([])
+  const [reports, setReports] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalJobs: 0,
+    activeJobs: 0,
+    totalApplications: 0,
+    pendingReports: 0,
+    activeFeatured: 0,
+  })
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) setCurrentAdmin(JSON.parse(stored));
-    fetchAll();
-  }, []);
+    const stored = localStorage.getItem("user")
+    if (stored) setCurrentAdmin(JSON.parse(stored))
+    fetchAll()
+  }, [])
 
   async function fetchAll() {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      const usersSnap = await getDocs(collection(db, "users"));
-      const usersList = usersSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }));
-      setUsers(usersList);
+      const usersSnap = await getDocs(collection(db, "users"))
+      const usersList = usersSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      setUsers(usersList)
 
-      const seekersSnap = await getDocs(collection(db, "seekerProfiles"));
+      const seekersSnap = await getDocs(collection(db, "seekerProfiles"))
       const seekersList = seekersSnap.docs.map((d) => {
-        const data = d.data();
+        const data = d.data()
         return {
           id: d.id,
           title: data.title || "",
@@ -60,49 +81,72 @@ export default function AdminPage() {
           education: data.education || "",
           availability: data.availability || "",
           salary_expectation: data.salary_expectation || "",
-        };
-      });
-      setJobSeekers(seekersList);
+          status: data.status || "pending",
+        }
+      })
+      setJobSeekers(seekersList)
 
-      const jobsSnap = await getDocs(collection(db, "jobs"));
-      const jobsList = jobsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }));
-      setJobs(jobsList);
+      const jobsSnap = await getDocs(collection(db, "jobs"))
+      const jobsList = jobsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      setJobs(jobsList)
 
-      const featuredSnap = await getDocs(collection(db, "featuredListings"));
-      const featuredList = featuredSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }));
-      setFeaturedListings(featuredList);
+      const featuredSnap = await getDocs(collection(db, "featuredListings"))
+      const featuredList = featuredSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      setFeaturedListings(featuredList)
 
-      const reportsSnap = await getDocs(collection(db, "reports"));
-      const reportsList = reportsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }));
-      setReports(reportsList);
+      const reportsSnap = await getDocs(collection(db, "reports"))
+      const reportsList = reportsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      setReports(reportsList)
+
+      // Stats calculation
+      const activeUsers = usersList.filter((u) => u.status === "active").length
+      const activeJobs = jobsList.filter((j) => j.status === "active").length
+      const totalApplications = jobsList.reduce((sum, job) => sum + (job.applications || 0), 0)
+      const pendingReports = reportsList.filter((r) => r.status === "pending").length
+      const activeFeatured = featuredList.filter((f) => f.status === "active").length
+
+      setStats({
+        totalUsers: usersList.length,
+        activeUsers,
+        totalJobs: jobsList.length,
+        activeJobs,
+        totalApplications,
+        pendingReports,
+        activeFeatured,
+      })
     } catch (e) {
-      console.error("Error loading data:", e);
+      console.error("Error loading data:", e)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
   const handleApproveUser = async (id: string) => {
-    await updateDoc(doc(db, "users", id), { status: "approved" });
-    fetchAll();
-  };
+    await updateDoc(doc(db, "users", id), { status: "active" })
+    fetchAll()
+  }
+
+  const handleRejectUser = async (id: string) => {
+    await updateDoc(doc(db, "users", id), { status: "rejected" })
+    fetchAll()
+  }
 
   const handleResolveReport = async (id: string) => {
-    await updateDoc(doc(db, "reports", id), { status: "resolved" });
-    fetchAll();
-  };
+    await updateDoc(doc(db, "reports", id), { status: "resolved" })
+    fetchAll()
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    window.location.href = "/admin-login";
-  };
+    localStorage.removeItem("user")
+    window.location.href = "/admin-login"
+  }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
       </div>
-    );
+    )
   }
 
   if (!currentAdmin || currentAdmin.role !== "admin") {
@@ -112,58 +156,91 @@ export default function AdminPage() {
         <h2 className="text-xl font-semibold">Admin Access Required</h2>
         <Button onClick={handleLogout}>Go to Login</Button>
       </div>
-    );
+    )
   }
 
   return (
     <div className="p-4">
-      {/* ✅ Dashboard summary cards (LIVE COUNTS) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-  <Card className="bg-gradient-to-tr from-teal-500 to-teal-700 text-white shadow-lg rounded-2xl">
-    <CardHeader>
-      <CardTitle className="text-white text-lg">Total Users</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-4xl font-bold tracking-tight">{users.length}</p>
-    </CardContent>
-  </Card>
+        <Card className="bg-gradient-to-tr from-teal-500 to-teal-700 text-white shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-white text-lg">Total Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold tracking-tight">{stats.totalUsers}</p>
+          </CardContent>
+        </Card>
 
-  <Card className="bg-gradient-to-tr from-cyan-500 to-teal-600 text-white shadow-lg rounded-2xl">
-    <CardHeader>
-      <CardTitle className="text-white text-lg">Total Job Seekers</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-4xl font-bold tracking-tight">{jobSeekers.length}</p>
-    </CardContent>
-  </Card>
+        <Card className="bg-gradient-to-tr from-cyan-500 to-teal-600 text-white shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-white text-lg">Total Job Seekers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold tracking-tight">{jobSeekers.length}</p>
+          </CardContent>
+        </Card>
 
-  <Card className="bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-lg rounded-2xl">
-    <CardHeader>
-      <CardTitle className="text-white text-lg">Total Jobs</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-4xl font-bold tracking-tight">{jobs.length}</p>
-    </CardContent>
-  </Card>
-</div>
+        <Card className="bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-white text-lg">Total Jobs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold tracking-tight">{jobs.length}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-
-      {/* ✅ Data Tabs */}
-      <Tabs defaultValue="users">
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="jobSeekers">Job Seekers</TabsTrigger>
-          <TabsTrigger value="jobs">Jobs</TabsTrigger>
-          <TabsTrigger value="featured">Featured</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="users" className="flex items-center gap-1">
+            <User className="h-4 w-4" />
+            Users
+          </TabsTrigger>
+          <TabsTrigger value="job-seekers" className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            Job Seekers
+          </TabsTrigger>
+          <TabsTrigger value="jobs" className="flex items-center gap-1">
+            <Briefcase className="h-4 w-4" />
+            Jobs
+          </TabsTrigger>
+          <TabsTrigger value="featured" className="flex items-center gap-1">
+            <Star className="h-4 w-4" />
+            Featured Listings
+            {stats.activeFeatured > 0 && (
+              <Badge variant="default" className="ml-1 bg-teal-500 text-white">
+                {stats.activeFeatured}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center gap-1">
+            <AlertCircle className="h-4 w-4" />
+            Reports
+            {stats.pendingReports > 0 && (
+              <Badge variant="destructive" className="ml-1">
+                {stats.pendingReports}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
-          <UsersTab users={users} onApprove={handleApproveUser} />
+          <UsersTab users={users} onApproveUser={handleApproveUser} onRejectUser={handleRejectUser} />
         </TabsContent>
 
-        <TabsContent value="jobSeekers">
-          <JobSeekersTab jobSeekers={jobSeekers} />
+        <TabsContent value="job-seekers">
+          <JobSeekersTab
+            jobSeekers={jobSeekers}
+            onApproveJobSeeker={async (id) => {
+              await updateDoc(doc(db, "seekerProfiles", id), { status: "active" });
+              fetchAll();
+            }}
+            onRejectJobSeeker={async (id) => {
+              await updateDoc(doc(db, "seekerProfiles", id), { status: "rejected" });
+              fetchAll();
+            }}
+          />
+
         </TabsContent>
 
         <TabsContent value="jobs">
@@ -179,5 +256,5 @@ export default function AdminPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }
