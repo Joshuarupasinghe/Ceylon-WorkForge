@@ -126,7 +126,18 @@ export default function AdminPage() {
       setFeaturedListings(featuredList)
 
       const reportsSnap = await getDocs(collection(db, "reports"))
-      const reportsList = reportsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
+      const reportsList = reportsSnap.docs.map((d) => {
+        const data = d.data()
+        return {
+          id: d.id,
+          type: data.type || "unknown",
+          reportedId: data.reportedId || "",
+          reportedName: data.reportedName || "N/A",
+          reason: data.reason || data.description || "No reason provided",
+          status: data.status || "pending",
+          reportedAt: data.createdAt?.toDate()?.toLocaleDateString() || "N/A",
+        }
+      })
       setReports(reportsList)
 
       const activeUsers = usersList.filter((u) => u.status === "active").length
@@ -165,6 +176,15 @@ export default function AdminPage() {
     await updateDoc(doc(db, "reports", id), { status: "resolved" })
     fetchAll()
   }
+
+  const handleRespondToReport = async (id: string, response: string, status: string) => {
+    await updateDoc(doc(db, "reports", id), {
+      response,
+      status,
+    })
+    fetchAll()
+  }
+
 
   const handleLogout = () => {
     localStorage.removeItem("user")
@@ -327,7 +347,11 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="reports">
-          <ReportsTab reports={reports} onResolveReport={handleResolveReport} />
+          <ReportsTab
+            reports={reports}
+            onResolveReport={handleResolveReport}
+            onRespondToReport={handleRespondToReport}
+          />
         </TabsContent>
       </Tabs>
     </div>

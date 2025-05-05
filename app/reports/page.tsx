@@ -3,15 +3,41 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/context/user-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { Loader2, CheckCircle2, Clock } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { db } from "@/lib/firebase"
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+} from "firebase/firestore"
 
 export default function ReportsPage() {
   const router = useRouter()
@@ -25,55 +51,35 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState("")
   const [reportTitle, setReportTitle] = useState("")
   const [reportDescription, setReportDescription] = useState("")
-
-  // Mock previous reports data
-  const [previousReports, setPreviousReports] = useState([
-    {
-      id: "REP-1234",
-      title: "Issue with profile update",
-      type: "Technical Issue",
-      status: "resolved",
-      date: "2023-05-15",
-      response:
-        "We've fixed the issue with profile updates. Please try again and let us know if you encounter any further problems.",
-    },
-    {
-      id: "REP-1235",
-      title: "Payment not processed correctly",
-      type: "Billing Issue",
-      status: "in-progress",
-      date: "2023-05-20",
-      response: "Our team is investigating this issue and will get back to you shortly.",
-    },
-    {
-      id: "REP-1236",
-      title: "Inappropriate content in job posting",
-      type: "Content Report",
-      status: "pending",
-      date: "2023-05-25",
-      response: null,
-    },
-  ])
+  const [previousReports, setPreviousReports] = useState([])
 
   useEffect(() => {
-    // Redirect if not logged in or is admin
     if (!userLoading && (!user || user.role === "admin")) {
       router.push("/login")
       return
     }
 
-    // Load reports data
-    const loadReportsData = async () => {
+    const loadReports = async () => {
       setIsLoading(true)
       try {
-        // In a real app, we would fetch reports data from an API
-        // For now, we'll just use the mock data and add a delay
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        const q = query(collection(db, "reports"), where("userId", "==", user.id))
+        const snapshot = await getDocs(q)
+        const list = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            title: data.title,
+            type: data.type,
+            status: data.status,
+            date: data.createdAt?.toDate().toISOString().split("T")[0] || "N/A",
+            response: data.response || null,
+          }
+        })
+        setPreviousReports(list)
       } catch (error) {
-        console.error("Error loading reports data:", error)
         toast({
           title: "Error",
-          description: "Failed to load reports data. Please try again.",
+          description: "Failed to load reports.",
           variant: "destructive",
         })
       } finally {
@@ -81,9 +87,7 @@ export default function ReportsPage() {
       }
     }
 
-    if (user) {
-      loadReportsData()
-    }
+    if (user) loadReports()
   }, [user, userLoading, router, toast])
 
   const handleSubmitReport = async (e) => {
@@ -101,12 +105,19 @@ export default function ReportsPage() {
     setIsSubmitting(true)
 
     try {
-      // In a real app, we would send the report to an API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const docRef = await addDoc(collection(db, "reports"), {
+        userId: user.id,
+        userName: user.name,
+        title: reportTitle,
+        type: reportType,
+        description: reportDescription,
+        status: "pending",
+        createdAt: Timestamp.now(),
+        response: null,
+      })
 
-      // Add the new report to the list
       const newReport = {
-        id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: docRef.id,
         title: reportTitle,
         type: reportType,
         status: "pending",
@@ -116,18 +127,15 @@ export default function ReportsPage() {
 
       setPreviousReports([newReport, ...previousReports])
 
-      // Reset form
       setReportType("")
       setReportTitle("")
       setReportDescription("")
 
-      // Show success message
       toast({
         title: "Report submitted",
-        description: "Your report has been submitted successfully. We'll review it shortly.",
+        description: "Your report has been submitted successfully.",
       })
 
-      // Switch to previous reports tab
       setActiveTab("previous-reports")
     } catch (error) {
       console.error("Error submitting report:", error)
@@ -153,7 +161,9 @@ export default function ReportsPage() {
     <div className="container py-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-bold text-primaryDark mb-2">Report a Problem</h1>
-        <p className="text-muted-foreground mb-8">Submit issues, bugs, or concerns to our administrative team</p>
+        <p className="text-muted-foreground mb-8">
+          Submit issues, bugs, or concerns to our administrative team
+        </p>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-8">
@@ -165,7 +175,9 @@ export default function ReportsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Submit a New Report</CardTitle>
-                <CardDescription>Please provide details about the issue you're experiencing</CardDescription>
+                <CardDescription>
+                  Please provide details about the issue you're experiencing
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmitReport} className="space-y-6">
@@ -230,11 +242,15 @@ export default function ReportsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Previous Reports</CardTitle>
-                <CardDescription>View status and responses to your previous reports</CardDescription>
+                <CardDescription>
+                  View status and responses to your previous reports
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {previousReports.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">You haven't submitted any reports yet.</div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    You haven't submitted any reports yet.
+                  </div>
                 ) : (
                   <div className="space-y-6">
                     {previousReports.map((report) => (
@@ -243,7 +259,9 @@ export default function ReportsPage() {
                           <div>
                             <h3 className="font-medium">{report.title}</h3>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs bg-muted px-2 py-1 rounded-md">{report.type}</span>
+                              <span className="text-xs bg-muted px-2 py-1 rounded-md">
+                                {report.type}
+                              </span>
                               <span className="text-xs text-muted-foreground">
                                 {report.id} • {report.date}
                               </span>
