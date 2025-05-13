@@ -228,9 +228,6 @@ export default function BillingPage() {
               <CardFooter className="flex flex-col sm:flex-row gap-3">
                 {subscription.status === "active" ? (
                   <>
-                    <Button variant="outline" onClick={handleUpdatePaymentMethod}>
-                      Update Payment Method
-                    </Button>
                     <Button variant="destructive" onClick={handleCancelSubscription} disabled={isLoading}>
                       {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                       Cancel Subscription
@@ -301,14 +298,6 @@ export default function BillingPage() {
                 )}
               </CardContent>
               <CardFooter>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    toast({ title: "Download", description: "This feature is not available in the demo version." })
-                  }
-                >
-                  Download Invoices
-                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
