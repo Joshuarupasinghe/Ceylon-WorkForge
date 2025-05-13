@@ -29,7 +29,7 @@ import { FeaturedListingsTab } from "@/components/admin/featured-listings-tab"
 import { ReportsTab } from "@/components/admin/reports-tab"
 
 import { db } from "@/lib/firebase"
-import { collection, getDocs, updateDoc, doc, addDoc, deleteDoc } from "firebase/firestore"
+import { collection, getDocs, updateDoc, doc, addDoc, deleteDoc, getDoc } from "firebase/firestore"
 
 interface AdminUser {
   id: string
@@ -110,8 +110,8 @@ export default function AdminPage() {
       const jobsSnap = await getDocs(collection(db, "jobs"))
       const jobsList = jobsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
       setJobs(jobsList)
-      
-//Get Featured Listing from DB
+
+      //Get Featured Listing from DB
       const featuredSnap = await getDocs(collection(db, "featuredListings"))
       const featuredList = featuredSnap.docs.map((d) => {
         const data = d.data();
@@ -125,21 +125,36 @@ export default function AdminPage() {
 
 
       setFeaturedListings(featuredList)
+      //Get Reports from firebase
+      const reportsSnap = await getDocs(collection(db, "reports"));
 
-      const reportsSnap = await getDocs(collection(db, "reports"))
-      const reportsList = reportsSnap.docs.map((d) => {
-        const data = d.data()
-        return {
-          id: d.id,
-          type: data.type || "unknown",
-          reportedId: data.reportedId || "",
-          reportedName: data.reportedName || "N/A",
-          reason: data.reason || data.description || "No reason provided",
-          status: data.status || "pending",
-          reportedAt: data.createdAt?.toDate()?.toLocaleDateString() || "N/A",
-        }
-      })
-      setReports(reportsList)
+      const reportsList = await Promise.all(
+        reportsSnap.docs.map(async (d) => {
+          const data = d.data();
+
+          // Fetch the user's name based on userId
+          let reportedName = "Unknown User";
+          if (data.userId) {
+            const userDoc = await getDoc(doc(db, "users", data.userId));
+            if (userDoc.exists()) {
+              reportedName = userDoc.data().name || "Unknown User";
+            }
+          }
+
+          return {
+            id: d.id,
+            type: data.type || "unknown",
+            reportedId: data.userId || "",
+            reportedName, // Set the name fetched from the users collection
+            title: data.title || "N/A",
+            description: data.description || "No reason provided",
+            status: data.status || "pending",
+            reportedAt: data.createdAt?.toDate()?.toLocaleDateString() || "N/A",
+          };
+        })
+      );
+
+      setReports(reportsList);
 
       const activeUsers = usersList.filter((u) => u.status === "active").length
       const activeJobs = jobsList.filter((j) => j.status === "active").length

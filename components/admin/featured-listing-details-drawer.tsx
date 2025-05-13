@@ -351,13 +351,6 @@ export function FeaturedListingDetailsDrawer({
               </Link>
             </Button>
 
-            <Button asChild variant="outline" className="gap-2">
-              <Link href={`/jobs/${listing.jobId}`} target="_blank">
-                <ExternalLink className="h-4 w-4" />
-                View Job Listing
-              </Link>
-            </Button>
-
             <Button
               variant="destructive"
               className="gap-2"

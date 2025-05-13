@@ -76,8 +76,7 @@ export function ReportsTab({ reports, onResolveReport, onRespondToReport }: Repo
             <TableHeader>
               <TableRow>
                 <TableHead>Type</TableHead>
-                <TableHead>Reported Item</TableHead>
-                <TableHead>Reason</TableHead>
+                <TableHead>Title</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Reported On</TableHead>
                 <TableHead>Actions</TableHead>
@@ -89,8 +88,7 @@ export function ReportsTab({ reports, onResolveReport, onRespondToReport }: Repo
                   <TableCell>
                     <Badge variant="outline">{report.type}</Badge>
                   </TableCell>
-                  <TableCell className="font-medium">{report.reportedName}</TableCell>
-                  <TableCell>{report.title}</TableCell>
+                  <TableCell className="font-medium">{report.title}</TableCell>
                   <TableCell>
                     <Badge
                       variant={report.status === "resolved" ? "default" : "secondary"}

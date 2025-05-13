@@ -26,7 +26,8 @@ interface FeaturedListing {
 export default function Home() {
   const [featuredJobs, setFeaturedJobs] = useState<FeaturedListing[]>([])
   const [featuredTalents, setFeaturedTalents] = useState<FeaturedListing[]>([])
-
+  
+//Get featured listings from Firestore
   useEffect(() => {
     const fetchListings = async () => {
       const snapshot = await getDocs(collection(db, "featuredListings"))

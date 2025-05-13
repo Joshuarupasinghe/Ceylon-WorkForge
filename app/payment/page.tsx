@@ -82,7 +82,7 @@ export default function PaymentPage() {
       // Determine amount in LKR
       const amount = plan === "yearly" ? 38000 : 3500
 
-      // Write payment record
+      // Add payment record to Firestore
       await addDoc(collection(db, "payments"), {
         userId:        user.id,
         amount,

@@ -185,7 +185,7 @@ export default function BillingPage() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Price</p>
-                    <p className="text-lg font-semibold">${subscription.amount}/month</p>
+                    <p className="text-lg font-semibold">Rs.{subscription.amount}/month</p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Next Billing Date</p>
@@ -272,7 +272,7 @@ export default function BillingPage() {
                         <tr key={payment.id}>
                           <td className="px-4 py-3 text-sm">{payment.date}</td>
                           <td className="px-4 py-3 text-sm">{payment.description}</td>
-                          <td className="px-4 py-3 text-sm">${payment.amount.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm">Rs.{payment.amount.toFixed(2)}</td>
                           <td className="px-4 py-3 text-sm">
                             <Badge
                               variant={payment.status === "completed" ? "outline" : "destructive"}
