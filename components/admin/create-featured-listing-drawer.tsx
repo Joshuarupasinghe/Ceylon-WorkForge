@@ -74,7 +74,7 @@ export function CreateFeaturedListingDrawer({
     } else {
       jobDetails.experience = experience
     }
-
+//Post Featured Listing to DB
     try {
       await addDoc(collection(db, "featuredListings"), jobDetails)
       onOpenChange(false)

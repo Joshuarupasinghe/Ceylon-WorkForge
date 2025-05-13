@@ -77,7 +77,7 @@ export function Navbar() {
                       className={cn(
                         navigationMenuTriggerStyle(),
                         "text-sm font-medium",
-                        pathname === item.href ? "text-accent" : "text-primaryDark hover:text-accent",
+                        pathname === item.href ? "text-black" : "text-primaryDark hover:text-white",
                       )}
                     >
                       {item.name}
@@ -93,7 +93,7 @@ export function Navbar() {
                       className={cn(
                         navigationMenuTriggerStyle(),
                         "text-sm font-medium",
-                        pathname === "/job-seekers" ? "text-accent" : "text-primaryDark hover:text-accent",
+                        pathname === "/job-seekers" ? "text-black" : "text-primaryDark hover:text-white",
                       )}
                     >
                       Jobs
@@ -109,7 +109,7 @@ export function Navbar() {
                       className={cn(
                         navigationMenuTriggerStyle(),
                         "text-sm font-medium",
-                        pathname === "/job-posters" ? "text-accent" : "text-primaryDark hover:text-accent",
+                        pathname === "/job-posters" ? "text-black" : "text-primaryDark hover:text-white",
                       )}
                     >
                       Talent
@@ -125,7 +125,7 @@ export function Navbar() {
                       className={cn(
                         navigationMenuTriggerStyle(),
                         "text-sm font-medium",
-                        pathname === "/admin" ? "text-accent" : "text-primaryDark hover:text-accent",
+                        pathname === "/admin" ? "text-black" : "text-primaryDark hover:text-white",
                       )}
                     >
                       Admin Dashboard

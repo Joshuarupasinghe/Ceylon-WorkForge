@@ -110,7 +110,8 @@ export default function AdminPage() {
       const jobsSnap = await getDocs(collection(db, "jobs"))
       const jobsList = jobsSnap.docs.map((d) => ({ id: d.id, ...(d.data()) }))
       setJobs(jobsList)
-
+      
+//Get Featured Listing from DB
       const featuredSnap = await getDocs(collection(db, "featuredListings"))
       const featuredList = featuredSnap.docs.map((d) => {
         const data = d.data();
