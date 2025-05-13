@@ -381,7 +381,7 @@ export default function JobSeekersPage() {
                       </Button>
                     )}
                     <Button variant="outline" className="w-full" asChild>
-                      <Link href={`/chat/${selectedJob.id}`}>Message Employer</Link>
+                     <Link href={`/chat/${selectedJob.userId}`}>Message Employer</Link>
                     </Button>
                   </CardFooter>
                 </Card>
@@ -470,7 +470,7 @@ export default function JobSeekersPage() {
                   </Button>
                 )}
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/chat/${selectedJob.id}`}>Message Employer</Link>
+                  <Link href={`/chat/${selectedJob.userId}`}>Message Employer</Link>
                 </Button>
               </div>
             </div>
