@@ -120,10 +120,7 @@ export function FeaturedListingsTabRefactored({
               <Plus className="h-4 w-4" />
               Add Featured Listing
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export Data
-            </Button>
+
           </div>
         </div>
         <div className="flex flex-col md:flex-row gap-4 mt-4">

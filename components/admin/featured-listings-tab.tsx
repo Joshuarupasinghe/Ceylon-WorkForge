@@ -209,10 +209,6 @@ export function FeaturedListingsTab({
               onOpenChange={setIsCreateDrawerOpen}
               onCreateFeatured={handleCreateFeatured}
             />
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export Data
-            </Button>
           </div>
         </div>
         <div className="flex flex-col md:flex-row gap-4 mt-4">
