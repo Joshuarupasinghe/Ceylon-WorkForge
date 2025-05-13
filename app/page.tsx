@@ -239,9 +239,6 @@ export default function Home() {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href={`/talents/${talent.id}`}>View Profile</Link>
-                      </Button>
                     </CardFooter>
                   </Card>
                 ))
