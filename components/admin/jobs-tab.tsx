@@ -1,5 +1,6 @@
 "use client"
 
+import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,8 +15,7 @@ interface Job {
   company: string
   location: string
   status: string
-  applications: number
-  postedAt: string
+  createdAt: string
 }
 
 interface JobsTabProps {
@@ -26,6 +26,39 @@ interface JobsTabProps {
 
 export function JobsTab({ jobs, onApproveJob, onRejectJob }: JobsTabProps) {
   const router = useRouter()
+
+  // Function to format date
+  const formatDate = (dateValue: any) => {
+    try {
+      // Handle Firestore Timestamp objects (with seconds and nanoseconds)
+      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+        // Convert Firestore timestamp to JavaScript Date
+        const date = new Date(dateValue.seconds * 1000)
+        return format(date, "PPP") // "PPP" format gives "April 29, 2023"
+      }
+      
+      // Handle string dates
+      if (typeof dateValue === 'string') {
+        // Check if the date is already a formatted string
+        if (dateValue.includes('/')) {
+          return dateValue
+        }
+        
+        const date = new Date(dateValue)
+        return format(date, "PPP")
+      }
+      
+      // Handle Date objects
+      if (dateValue instanceof Date) {
+        return format(dateValue, "PPP")
+      }
+      
+      return dateValue || "N/A" // Return original value or N/A if formatting fails
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return "N/A"
+    }
+  }
 
   return (
     <Card>
@@ -41,7 +74,6 @@ export function JobsTab({ jobs, onApproveJob, onRejectJob }: JobsTabProps) {
               <TableHead>Company</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Applications</TableHead>
               <TableHead>Posted</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -60,8 +92,7 @@ export function JobsTab({ jobs, onApproveJob, onRejectJob }: JobsTabProps) {
                     {job.status === "active" ? "Active" : "Pending"}
                   </Badge>
                 </TableCell>
-                <TableCell>{job.applications}</TableCell>
-                <TableCell>{job.postedAt}</TableCell>
+                <TableCell>{formatDate(job.createdAt)}</TableCell> {/* Now using the formatDate function */}
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {job.status === "pending" && (
@@ -75,7 +106,12 @@ export function JobsTab({ jobs, onApproveJob, onRejectJob }: JobsTabProps) {
                           <CheckCircle className="h-4 w-4 text-green-500" />
                           <span className="sr-only">Approve</span>
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => onRejectJob(job.id)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => onRejectJob(job.id)}
+                        >
                           <XCircle className="h-4 w-4 text-destructive" />
                           <span className="sr-only">Reject</span>
                         </Button>
